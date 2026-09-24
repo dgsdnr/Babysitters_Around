@@ -301,6 +301,12 @@
     <div id="nf-status-badge"></div>
     <div id="nf-missing-box"></div>
 
+    <div class="field-label">Имя</div>
+    <div class="readonly-field" id="nf-name-display">—</div>
+
+    <div class="field-label">Город *</div>
+    <input type="text" id="nf-city" placeholder="Например, Белград">
+
     <div class="field-label">Возраст *</div>
     <input type="number" id="nf-age" placeholder="Например, 28">
 
@@ -626,8 +632,22 @@
       document.getElementById('nf-about-count').textContent = val.length;
     }
 
+    async function syncCityToProfile(cityValue) {
+      if (cityValue && cityValue !== currentUser.city) {
+        const { data, error } = await sb
+          .from('users')
+          .update({ city: cityValue })
+          .eq('telegram_id', telegramId)
+          .select()
+          .single();
+        if (!error) currentUser = data;
+      }
+    }
+
     function openNannyForm() {
       const p = currentNannyProfile;
+      document.getElementById('nf-name-display').textContent = currentUser.name || 'Не указано (заполните в «Моём профиле»)';
+      document.getElementById('nf-city').value = currentUser.city || '';
       document.getElementById('nf-age').value = p?.age || '';
       document.getElementById('nf-price').value = p?.min_price || '';
       document.getElementById('nf-about').value = p?.about || '';
@@ -679,9 +699,10 @@
     }
 
     async function saveNannyDraft() {
+      const cityValue = document.getElementById('nf-city').value.trim();
+      await syncCityToProfile(cityValue);
       const fields = collectNannyFormData();
       const { data, error } = await upsertNannyProfile(fields);
-
       if (error) {
         alert('Ошибка сохранения: ' + error.message);
         return;
@@ -693,12 +714,14 @@
     }
 
     async function publishNannyProfile() {
+      const cityValue = document.getElementById('nf-city').value.trim();
+      await syncCityToProfile(cityValue);
       const fields = collectNannyFormData();
 
       const missing = [];
       if (!currentUser.avatar_url) missing.push('Фотографию (в «Моём профиле»)');
       if (!currentUser.name) missing.push('Имя (в «Моём профиле»)');
-      if (!currentUser.city) missing.push('Город (в «Моём профиле»)');
+      if (!cityValue) missing.push('Город');
       if (!fields.age) missing.push('Возраст');
       if (!fields.languages) missing.push('Языки');
       if (!fields.age_groups) missing.push('Возрастные группы');
