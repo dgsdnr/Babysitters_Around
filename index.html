@@ -141,6 +141,37 @@
       font-size: 15px;
     }
     .save-wrap { margin-top: 24px; }
+
+    .avatar-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .avatar-circle {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: #ddd;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: #999;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .avatar-btn {
+      background: #eee;
+      color: #333;
+      width: auto;
+      padding: 8px 16px;
+      font-size: 14px;
+      margin: 0;
+    }
+    #avatarFileInput { display: none; }
   </style>
 </head>
 <body>
@@ -192,6 +223,13 @@
     </div>
 
     <div id="username-warning"></div>
+
+    <div class="avatar-wrap">
+      <div class="avatar-circle" id="avatarCircle">👤</div>
+      <input type="file" id="avatarFileInput" accept="image/*" onchange="onAvatarSelected(event)">
+      <button class="avatar-btn" onclick="document.getElementById('avatarFileInput').click()">Изменить фото</button>
+      <div id="avatarStatus" style="font-size:13px;color:#888;"></div>
+    </div>
 
     <div class="field-label">Имя</div>
     <input type="text" id="f-name" placeholder="Ваше имя">
@@ -247,6 +285,7 @@
     const telegramName = tgUser?.first_name || '';
 
     let currentUser = null;
+    let pendingAvatarUrl = null;
 
     async function init() {
       if (!telegramId) {
@@ -330,10 +369,21 @@
     }
 
     function openProfile() {
+      pendingAvatarUrl = null;
       document.getElementById('f-name').value = currentUser.name || '';
       document.getElementById('f-city').value = currentUser.city || '';
       document.getElementById('f-children').value = currentUser.children || '';
       document.getElementById('f-about').value = currentUser.about || '';
+      document.getElementById('avatarStatus').textContent = '';
+
+      const circle = document.getElementById('avatarCircle');
+      if (currentUser.avatar_url) {
+        circle.style.backgroundImage = `url(${currentUser.avatar_url})`;
+        circle.textContent = '';
+      } else {
+        circle.style.backgroundImage = '';
+        circle.textContent = '👤';
+      }
 
       document.getElementById('parent-only-fields').style.display =
         currentUser.role === 'parent' ? 'block' : 'none';
@@ -351,11 +401,47 @@
       showScreen('profile');
     }
 
+    async function onAvatarSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const statusEl = document.getElementById('avatarStatus');
+      statusEl.textContent = 'Загрузка фото...';
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${telegramId}_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        statusEl.textContent = 'Ошибка загрузки: ' + uploadError.message;
+        return;
+      }
+
+      const { data: urlData } = sb.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      pendingAvatarUrl = urlData.publicUrl;
+
+      const circle = document.getElementById('avatarCircle');
+      circle.style.backgroundImage = `url(${pendingAvatarUrl})`;
+      circle.textContent = '';
+
+      statusEl.textContent = 'Фото загружено ✅ (не забудьте нажать «Сохранить»)';
+    }
+
     async function saveProfile() {
       const updates = {
         name: document.getElementById('f-name').value.trim(),
         city: document.getElementById('f-city').value.trim()
       };
+
+      if (pendingAvatarUrl) {
+        updates.avatar_url = pendingAvatarUrl;
+      }
 
       if (currentUser.role === 'parent') {
         updates.children = document.getElementById('f-children').value.trim();
@@ -375,6 +461,7 @@
       }
 
       currentUser = data;
+      pendingAvatarUrl = null;
       alert('Профиль сохранён ✅');
       showHome(currentUser);
     }
