@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babysitters Around</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Babysitters Around 👶</h1>
+  <script>
+    // Сообщаем Telegram, что приложение готово к показу
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+  </script>
+</body>
+</html>
