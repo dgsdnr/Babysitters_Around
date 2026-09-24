@@ -37,6 +37,7 @@
     }
     .btn-parent { background: #4A90D9; color: white; }
     .btn-nanny { background: #E8887A; color: white; }
+    .btn-save { background: #4CAF50; color: white; }
     #loading { color: #999; word-break: break-word; }
 
     .menu-item {
@@ -52,7 +53,22 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     .menu-item .emoji { font-size: 22px; }
-    .top-title { font-size: 20px; font-weight: 700; margin: 10px 0 20px; }
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .top-title { font-size: 20px; font-weight: 700; }
+    .close-btn {
+      font-size: 22px;
+      color: #888;
+      cursor: pointer;
+      padding: 4px 10px;
+      background: none;
+      width: auto;
+      margin: 0;
+    }
     .toggle-card {
       background: white;
       border-radius: 14px;
@@ -93,6 +109,38 @@
       font-size: 14px;
       margin-bottom: 16px;
     }
+    .warning {
+      background: #FFEBEE;
+      color: #B71C1C;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .field-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #444;
+      margin: 14px 0 6px;
+    }
+    input[type=text], textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      background: white;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .readonly-field {
+      background: #eee;
+      color: #777;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+    .save-wrap { margin-top: 24px; }
   </style>
 </head>
 <body>
@@ -111,7 +159,7 @@
     <div id="parent-hint"></div>
     <div class="menu-item" onclick="stub('Поиск няни')"><span class="emoji">🔎</span> Найти няню</div>
     <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
-    <div class="menu-item" onclick="stub('Мой профиль')"><span class="emoji">👤</span> Мой профиль</div>
+    <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
@@ -130,10 +178,41 @@
     <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="stub('Моя анкета')"><span class="emoji">👩‍🍼</span> Моя анкета</div>
     <div class="menu-item" onclick="stub('Доступность')"><span class="emoji">📅</span> Доступность</div>
-    <div class="menu-item" onclick="stub('Мой профиль')"><span class="emoji">👤</span> Мой профиль</div>
+    <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
+  </div>
+
+  <!-- ПРОФИЛЬ -->
+  <div id="profile" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Мой профиль</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+
+    <div id="username-warning"></div>
+
+    <div class="field-label">Имя</div>
+    <input type="text" id="f-name" placeholder="Ваше имя">
+
+    <div class="field-label">Город</div>
+    <input type="text" id="f-city" placeholder="Например, Белград">
+
+    <div id="parent-only-fields" style="display:none;">
+      <div class="field-label">Дети</div>
+      <input type="text" id="f-children" placeholder="Например: Маша, 4 года">
+
+      <div class="field-label">О себе</div>
+      <textarea id="f-about" placeholder="Расскажите немного о себе"></textarea>
+    </div>
+
+    <div class="field-label">Telegram username</div>
+    <div class="readonly-field" id="f-username-display">—</div>
+
+    <div class="save-wrap">
+      <button class="btn-save" onclick="saveProfile()">Сохранить</button>
+    </div>
   </div>
 
   <script>
@@ -192,7 +271,7 @@
         currentUser = data;
         showHome(data);
       } else {
-        document.getElementById('welcome').style.display = 'flex';
+        showScreen('welcome');
       }
     }
 
@@ -213,25 +292,30 @@
         return;
       }
 
-      document.getElementById('welcome').style.display = 'none';
       currentUser = data;
       showHome(data);
     }
 
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
+      const el = document.getElementById(id);
+      el.style.display = (id === 'welcome') ? 'flex' : 'block';
+    }
+
     function showHome(user) {
       if (user.role === 'parent') {
-        document.getElementById('home-parent').style.display = 'block';
-        if (!user.city) {
-          document.getElementById('parent-hint').innerHTML =
-            '<div class="hint">Заполните профиль, чтобы няням было проще вас узнать 🙂</div>';
-        }
+        showScreen('home-parent');
+        document.getElementById('parent-hint').innerHTML = !user.city
+          ? '<div class="hint">Заполните профиль, чтобы няням было проще вас узнать 🙂</div>' : '';
       } else {
-        document.getElementById('home-nanny').style.display = 'block';
-        if (!user.city) {
-          document.getElementById('nanny-hint').innerHTML =
-            '<div class="hint">Заполните анкету и календарь, чтобы родители могли вас найти 🙂</div>';
-        }
+        showScreen('home-nanny');
+        document.getElementById('nanny-hint').innerHTML = !user.city
+          ? '<div class="hint">Заполните анкету и календарь, чтобы родители могли вас найти 🙂</div>' : '';
       }
+    }
+
+    function goHome() {
+      showHome(currentUser);
     }
 
     function stub(name) {
@@ -243,6 +327,56 @@
       const label = document.getElementById('toggle-label');
       const isOn = el.classList.toggle('on');
       label.textContent = isOn ? 'Да' : 'Нет';
+    }
+
+    function openProfile() {
+      document.getElementById('f-name').value = currentUser.name || '';
+      document.getElementById('f-city').value = currentUser.city || '';
+      document.getElementById('f-children').value = currentUser.children || '';
+      document.getElementById('f-about').value = currentUser.about || '';
+
+      document.getElementById('parent-only-fields').style.display =
+        currentUser.role === 'parent' ? 'block' : 'none';
+
+      const usernameDisplay = document.getElementById('f-username-display');
+      const usernameWarning = document.getElementById('username-warning');
+      if (currentUser.username) {
+        usernameDisplay.textContent = '@' + currentUser.username;
+        usernameWarning.innerHTML = '';
+      } else {
+        usernameDisplay.textContent = 'Не указан';
+        usernameWarning.innerHTML = '<div class="warning">У вас не указан Telegram username. Без него другим пользователям может быть сложнее связаться с вами.</div>';
+      }
+
+      showScreen('profile');
+    }
+
+    async function saveProfile() {
+      const updates = {
+        name: document.getElementById('f-name').value.trim(),
+        city: document.getElementById('f-city').value.trim()
+      };
+
+      if (currentUser.role === 'parent') {
+        updates.children = document.getElementById('f-children').value.trim();
+        updates.about = document.getElementById('f-about').value.trim();
+      }
+
+      const { data, error } = await sb
+        .from('users')
+        .update(updates)
+        .eq('telegram_id', telegramId)
+        .select()
+        .single();
+
+      if (error) {
+        alert('Ошибка сохранения: ' + error.message);
+        return;
+      }
+
+      currentUser = data;
+      alert('Профиль сохранён ✅');
+      showHome(currentUser);
     }
 
     init();
