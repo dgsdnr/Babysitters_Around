@@ -5,28 +5,132 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Babysitters Around</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body {
       font-family: -apple-system, sans-serif;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
       margin: 0;
       background: #f5f5f5;
-    }
-    h1 {
-      color: #333;
+      padding: 20px;
+      box-sizing: border-box;
       text-align: center;
     }
+    h1 { color: #333; }
+    p { color: #666; margin-bottom: 30px; }
+    button {
+      width: 100%;
+      max-width: 300px;
+      padding: 16px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-parent { background: #4A90D9; color: white; }
+    .btn-nanny { background: #E8887A; color: white; }
+    #loading { color: #999; }
   </style>
 </head>
 <body>
-  <h1>Babysitters Around 👶</h1>
+
+  <div id="loading">Загрузка...</div>
+
+  <div id="welcome" style="display:none;">
+    <h1>Babysitters Around 👶</h1>
+    <p>Находите нянь рядом с вами или предлагайте свои услуги</p>
+    <button class="btn-parent" onclick="selectRole('parent')">Я родитель</button>
+    <button class="btn-nanny" onclick="selectRole('babysitter')">Я няня</button>
+  </div>
+
+  <div id="home" style="display:none;">
+    <h1 id="home-title"></h1>
+    <p id="home-sub"></p>
+  </div>
+
   <script>
-    // Сообщаем Telegram, что приложение готово к показу
+    // ==== НАСТРОЙКИ SUPABASE — ЗАМЕНИ ЭТИ ДВЕ СТРОКИ ====
+    const SUPABASE_URL = 'https://babysitters-around-1oh3.vercel.app/';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvbnlpeWlqbWFtc2VjZ3J6bXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzU0MTUsImV4cCI6MjEwNTc1MTQxNX0.YzG_QS07R3bqZTL8AkFB2jazUsfjcHjM6JJj1C0bnNU';
+    // ======================================================
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     Telegram.WebApp.ready();
     Telegram.WebApp.expand();
+
+    const tgUser = Telegram.WebApp.initDataUnsafe?.user;
+    const telegramId = tgUser?.id;
+    const telegramUsername = tgUser?.username || null;
+    const telegramName = tgUser?.first_name || '';
+
+    async function init() {
+      if (!telegramId) {
+        document.getElementById('loading').textContent = 'Ошибка: не удалось получить данные Telegram';
+        return;
+      }
+
+      // Проверяем, есть ли уже такой пользователь в базе
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('telegram_id', telegramId)
+        .maybeSingle();
+
+      if (error) {
+        document.getElementById('loading').textContent = 'Ошибка загрузки: ' + error.message;
+        return;
+      }
+
+      document.getElementById('loading').style.display = 'none';
+
+      if (data) {
+        // Пользователь уже существует — показываем его Главную
+        showHome(data);
+      } else {
+        // Новый пользователь — показываем выбор роли
+        document.getElementById('welcome').style.display = 'block';
+      }
+    }
+
+    async function selectRole(role) {
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          telegram_id: telegramId,
+          role: role,
+          name: telegramName,
+          username: telegramUsername
+        })
+        .select()
+        .single();
+
+      if (error) {
+        alert('Ошибка сохранения: ' + error.message);
+        return;
+      }
+
+      document.getElementById('welcome').style.display = 'none';
+      showHome(data);
+    }
+
+    function showHome(user) {
+      document.getElementById('home').style.display = 'block';
+      if (user.role === 'parent') {
+        document.getElementById('home-title').textContent = 'Главная родителя 👨‍👩‍👧';
+      } else {
+        document.getElementById('home-title').textContent = 'Главная няни 👩‍🍼';
+      }
+      document.getElementById('home-sub').textContent = 'Привет, ' + (user.name || 'друг') + '!';
+    }
+
+    init();
   </script>
 </body>
 </html>
