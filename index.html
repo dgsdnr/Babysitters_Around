@@ -5,24 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Babysitters Around</title>
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+      color: #222;
+    }
+    .screen { display: none; padding: 20px; min-height: 100vh; }
+    .center {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
-      margin: 0;
-      background: #f5f5f5;
-      padding: 20px;
-      box-sizing: border-box;
       text-align: center;
+      padding: 20px;
     }
-    h1 { color: #333; }
-    p { color: #666; margin-bottom: 30px; }
+    h1 { color: #333; font-size: 22px; }
+    p { color: #666; }
     button {
       width: 100%;
-      max-width: 300px;
+      max-width: 320px;
       padding: 16px;
       margin: 8px 0;
       border: none;
@@ -33,28 +37,108 @@
     }
     .btn-parent { background: #4A90D9; color: white; }
     .btn-nanny { background: #E8887A; color: white; }
-    #loading { color: #999; word-break: break-word; padding: 20px; }
+    #loading { color: #999; word-break: break-word; }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: white;
+      padding: 16px;
+      border-radius: 14px;
+      margin-bottom: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .menu-item .emoji { font-size: 22px; }
+    .top-title { font-size: 20px; font-weight: 700; margin: 10px 0 20px; }
+    .toggle-card {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .switch {
+      width: 46px;
+      height: 26px;
+      border-radius: 13px;
+      background: #ccc;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .switch.on { background: #4CAF50; }
+    .switch::after {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: white;
+      top: 2px;
+      left: 2px;
+      transition: left 0.2s;
+    }
+    .switch.on::after { left: 22px; }
+    .hint {
+      background: #FFF8E1;
+      color: #7a6a00;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
   </style>
 </head>
 <body>
 
-  <div id="loading">Загрузка...</div>
+  <div id="loading" class="center">Загрузка...</div>
 
-  <div id="welcome" style="display:none;">
+  <div id="welcome" class="screen center">
     <h1>Babysitters Around 👶</h1>
     <p>Находите нянь рядом с вами или предлагайте свои услуги</p>
     <button class="btn-parent" onclick="selectRole('parent')">Я родитель</button>
     <button class="btn-nanny" onclick="selectRole('babysitter')">Я няня</button>
   </div>
 
-  <div id="home" style="display:none;">
-    <h1 id="home-title"></h1>
-    <p id="home-sub"></p>
+  <div id="home-parent" class="screen">
+    <div class="top-title">Главная</div>
+    <div id="parent-hint"></div>
+    <div class="menu-item" onclick="stub('Поиск няни')"><span class="emoji">🔎</span> Найти няню</div>
+    <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
+    <div class="menu-item" onclick="stub('Мой профиль')"><span class="emoji">👤</span> Мой профиль</div>
+    <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
+    <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
+    <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
+  </div>
+
+  <div id="home-nanny" class="screen">
+    <div class="top-title">Главная</div>
+    <div id="nanny-hint"></div>
+    <div class="toggle-card">
+      <div>
+        <div style="font-weight:600;">Доступна в поиске</div>
+        <div style="font-size:13px;color:#888;" id="toggle-label">Да</div>
+      </div>
+      <div class="switch on" id="availSwitch" onclick="toggleAvailable()"></div>
+    </div>
+    <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
+    <div class="menu-item" onclick="stub('Моя анкета')"><span class="emoji">👩‍🍼</span> Моя анкета</div>
+    <div class="menu-item" onclick="stub('Доступность')"><span class="emoji">📅</span> Доступность</div>
+    <div class="menu-item" onclick="stub('Мой профиль')"><span class="emoji">👤</span> Мой профиль</div>
+    <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
+    <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
+    <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
 
   <script>
     window.onerror = function(msg) {
-      document.getElementById('loading').style.display = 'block';
+      document.getElementById('loading').style.display = 'flex';
       document.getElementById('loading').textContent = 'JS ошибка: ' + msg;
     };
     setTimeout(function() {
@@ -83,6 +167,8 @@
     const telegramUsername = tgUser?.username || null;
     const telegramName = tgUser?.first_name || '';
 
+    let currentUser = null;
+
     async function init() {
       if (!telegramId) {
         document.getElementById('loading').textContent = 'Не удалось получить данные Telegram. Открой приложение через кнопку в боте, а не напрямую в браузере.';
@@ -103,9 +189,10 @@
       document.getElementById('loading').style.display = 'none';
 
       if (data) {
+        currentUser = data;
         showHome(data);
       } else {
-        document.getElementById('welcome').style.display = 'block';
+        document.getElementById('welcome').style.display = 'flex';
       }
     }
 
@@ -127,14 +214,35 @@
       }
 
       document.getElementById('welcome').style.display = 'none';
+      currentUser = data;
       showHome(data);
     }
 
     function showHome(user) {
-      document.getElementById('home').style.display = 'block';
-      document.getElementById('home-title').textContent =
-        user.role === 'parent' ? 'Главная родителя 👨‍👩‍👧' : 'Главная няни 👩‍🍼';
-      document.getElementById('home-sub').textContent = 'Привет, ' + (user.name || 'друг') + '!';
+      if (user.role === 'parent') {
+        document.getElementById('home-parent').style.display = 'block';
+        if (!user.city) {
+          document.getElementById('parent-hint').innerHTML =
+            '<div class="hint">Заполните профиль, чтобы няням было проще вас узнать 🙂</div>';
+        }
+      } else {
+        document.getElementById('home-nanny').style.display = 'block';
+        if (!user.city) {
+          document.getElementById('nanny-hint').innerHTML =
+            '<div class="hint">Заполните анкету и календарь, чтобы родители могли вас найти 🙂</div>';
+        }
+      }
+    }
+
+    function stub(name) {
+      alert(name + ' — раздел в разработке, скоро будет готов 🙂');
+    }
+
+    function toggleAvailable() {
+      const el = document.getElementById('availSwitch');
+      const label = document.getElementById('toggle-label');
+      const isOn = el.classList.toggle('on');
+      label.textContent = isOn ? 'Да' : 'Нет';
     }
 
     init();
