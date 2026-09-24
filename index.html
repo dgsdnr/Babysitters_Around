@@ -38,6 +38,8 @@
     .btn-parent { background: #4A90D9; color: white; }
     .btn-nanny { background: #E8887A; color: white; }
     .btn-save { background: #4CAF50; color: white; }
+    .btn-publish { background: #E8887A; color: white; }
+    .btn-secondary { background: #eee; color: #333; }
     #loading { color: #999; word-break: break-word; }
 
     .menu-item {
@@ -89,6 +91,7 @@
       transition: background 0.2s;
     }
     .switch.on { background: #4CAF50; }
+    .switch.disabled { opacity: 0.5; cursor: not-allowed; }
     .switch::after {
       content: '';
       position: absolute;
@@ -117,13 +120,21 @@
       font-size: 14px;
       margin-bottom: 16px;
     }
+    .success-box {
+      background: #E8F5E9;
+      color: #1B5E20;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
     .field-label {
       font-size: 14px;
       font-weight: 600;
       color: #444;
       margin: 14px 0 6px;
     }
-    input[type=text], textarea {
+    input[type=text], input[type=number], textarea {
       width: 100%;
       padding: 12px;
       border: 1px solid #ddd;
@@ -172,6 +183,33 @@
       margin: 0;
     }
     #avatarFileInput { display: none; }
+
+    .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      padding: 8px 14px;
+      border-radius: 20px;
+      background: white;
+      border: 1px solid #ddd;
+      font-size: 14px;
+      cursor: pointer;
+      color: #444;
+    }
+    .pill.selected {
+      background: #4A90D9;
+      color: white;
+      border-color: #4A90D9;
+    }
+    .char-count { font-size: 12px; color: #999; text-align: right; }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .status-draft { background: #eee; color: #666; }
+    .status-published { background: #E8F5E9; color: #1B5E20; }
   </style>
 </head>
 <body>
@@ -202,12 +240,12 @@
     <div class="toggle-card">
       <div>
         <div style="font-weight:600;">Доступна в поиске</div>
-        <div style="font-size:13px;color:#888;" id="toggle-label">Да</div>
+        <div style="font-size:13px;color:#888;" id="toggle-label">Нет</div>
       </div>
-      <div class="switch on" id="availSwitch" onclick="toggleAvailable()"></div>
+      <div class="switch" id="availSwitch" onclick="toggleAvailable()"></div>
     </div>
     <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
-    <div class="menu-item" onclick="stub('Моя анкета')"><span class="emoji">👩‍🍼</span> Моя анкета</div>
+    <div class="menu-item" onclick="openNannyForm()"><span class="emoji">👩‍🍼</span> Моя анкета</div>
     <div class="menu-item" onclick="stub('Доступность')"><span class="emoji">📅</span> Доступность</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
@@ -253,6 +291,56 @@
     </div>
   </div>
 
+  <!-- АНКЕТА НЯНИ -->
+  <div id="nanny-form" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Моя анкета</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+
+    <div id="nf-status-badge"></div>
+    <div id="nf-missing-box"></div>
+
+    <div class="field-label">Возраст *</div>
+    <input type="number" id="nf-age" placeholder="Например, 28">
+
+    <div class="field-label">Языки *</div>
+    <div class="pill-group" id="nf-languages">
+      <div class="pill" data-value="Русский" onclick="togglePill(this)">Русский</div>
+      <div class="pill" data-value="Английский" onclick="togglePill(this)">Английский</div>
+      <div class="pill" data-value="Сербский" onclick="togglePill(this)">Сербский</div>
+      <div class="pill" data-value="Немецкий" onclick="togglePill(this)">Немецкий</div>
+    </div>
+
+    <div class="field-label">Возрастные группы детей *</div>
+    <div class="pill-group" id="nf-agegroups">
+      <div class="pill" data-value="0–1" onclick="togglePill(this)">0–1 год</div>
+      <div class="pill" data-value="1–3" onclick="togglePill(this)">1–3 года</div>
+      <div class="pill" data-value="3–6" onclick="togglePill(this)">3–6 лет</div>
+      <div class="pill" data-value="6–12" onclick="togglePill(this)">6–12 лет</div>
+      <div class="pill" data-value="12+" onclick="togglePill(this)">12+ лет</div>
+    </div>
+
+    <div class="field-label">Формат работы *</div>
+    <div class="pill-group" id="nf-workformat">
+      <div class="pill" data-value="У семьи" onclick="togglePill(this)">У семьи</div>
+      <div class="pill" data-value="У няни" onclick="togglePill(this)">У няни</div>
+      <div class="pill" data-value="В другом месте" onclick="togglePill(this)">В другом месте</div>
+    </div>
+
+    <div class="field-label">Минимальная стоимость (€) *</div>
+    <input type="number" id="nf-price" placeholder="Например, 5">
+
+    <div class="field-label">О себе * <span style="font-weight:400;color:#999;">(до 500 символов)</span></div>
+    <textarea id="nf-about" maxlength="500" oninput="updateCharCount()"></textarea>
+    <div class="char-count"><span id="nf-about-count">0</span>/500</div>
+
+    <div class="save-wrap">
+      <button class="btn-save" onclick="saveNannyDraft()">Сохранить</button>
+      <button class="btn-publish" onclick="publishNannyProfile()">Опубликовать анкету</button>
+    </div>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       document.getElementById('loading').style.display = 'flex';
@@ -285,6 +373,7 @@
     const telegramName = tgUser?.first_name || '';
 
     let currentUser = null;
+    let currentNannyProfile = null;
     let pendingAvatarUrl = null;
 
     async function init() {
@@ -308,9 +397,24 @@
 
       if (data) {
         currentUser = data;
+        if (data.role === 'babysitter') {
+          await loadNannyProfile();
+        }
         showHome(data);
       } else {
         showScreen('welcome');
+      }
+    }
+
+    async function loadNannyProfile() {
+      const { data, error } = await sb
+        .from('nanny_profiles')
+        .select('*')
+        .eq('telegram_id', telegramId)
+        .maybeSingle();
+
+      if (!error) {
+        currentNannyProfile = data;
       }
     }
 
@@ -332,6 +436,9 @@
       }
 
       currentUser = data;
+      if (data.role === 'babysitter') {
+        await loadNannyProfile();
+      }
       showHome(data);
     }
 
@@ -348,9 +455,23 @@
           ? '<div class="hint">Заполните профиль, чтобы няням было проще вас узнать 🙂</div>' : '';
       } else {
         showScreen('home-nanny');
-        document.getElementById('nanny-hint').innerHTML = !user.city
-          ? '<div class="hint">Заполните анкету и календарь, чтобы родители могли вас найти 🙂</div>' : '';
+        const hintEl = document.getElementById('nanny-hint');
+        const published = currentNannyProfile?.is_published;
+        hintEl.innerHTML = !published
+          ? '<div class="hint">Заполните и опубликуйте анкету, чтобы родители могли вас найти 🙂</div>' : '';
+        updateAvailSwitchUI();
       }
+    }
+
+    function updateAvailSwitchUI() {
+      const el = document.getElementById('availSwitch');
+      const label = document.getElementById('toggle-label');
+      const published = currentNannyProfile?.is_published;
+      const isAvailable = currentNannyProfile?.is_available && published;
+
+      el.classList.toggle('on', !!isAvailable);
+      el.classList.toggle('disabled', !published);
+      label.textContent = isAvailable ? 'Да' : 'Нет';
     }
 
     function goHome() {
@@ -361,12 +482,28 @@
       alert(name + ' — раздел в разработке, скоро будет готов 🙂');
     }
 
-    function toggleAvailable() {
-      const el = document.getElementById('availSwitch');
-      const label = document.getElementById('toggle-label');
-      const isOn = el.classList.toggle('on');
-      label.textContent = isOn ? 'Да' : 'Нет';
+    async function toggleAvailable() {
+      if (!currentNannyProfile?.is_published) {
+        alert('Сначала опубликуйте анкету — тогда сможете включить показ в поиске.');
+        return;
+      }
+      const newValue = !currentNannyProfile.is_available;
+      const { data, error } = await sb
+        .from('nanny_profiles')
+        .update({ is_available: newValue })
+        .eq('telegram_id', telegramId)
+        .select()
+        .single();
+
+      if (error) {
+        alert('Ошибка: ' + error.message);
+        return;
+      }
+      currentNannyProfile = data;
+      updateAvailSwitchUI();
     }
+
+    // ==== ПРОФИЛЬ ====
 
     function openProfile() {
       pendingAvatarUrl = null;
@@ -463,6 +600,133 @@
       currentUser = data;
       pendingAvatarUrl = null;
       alert('Профиль сохранён ✅');
+      showHome(currentUser);
+    }
+
+    // ==== АНКЕТА НЯНИ ====
+
+    function togglePill(el) {
+      el.classList.toggle('selected');
+    }
+
+    function getSelectedPills(containerId) {
+      const els = document.querySelectorAll('#' + containerId + ' .pill.selected');
+      return Array.from(els).map(e => e.dataset.value);
+    }
+
+    function setSelectedPills(containerId, valuesStr) {
+      const values = (valuesStr || '').split(',').map(v => v.trim()).filter(Boolean);
+      document.querySelectorAll('#' + containerId + ' .pill').forEach(p => {
+        p.classList.toggle('selected', values.includes(p.dataset.value));
+      });
+    }
+
+    function updateCharCount() {
+      const val = document.getElementById('nf-about').value;
+      document.getElementById('nf-about-count').textContent = val.length;
+    }
+
+    function openNannyForm() {
+      const p = currentNannyProfile;
+      document.getElementById('nf-age').value = p?.age || '';
+      document.getElementById('nf-price').value = p?.min_price || '';
+      document.getElementById('nf-about').value = p?.about || '';
+      updateCharCount();
+
+      setSelectedPills('nf-languages', p?.languages);
+      setSelectedPills('nf-agegroups', p?.age_groups);
+      setSelectedPills('nf-workformat', p?.work_format);
+
+      const badge = document.getElementById('nf-status-badge');
+      if (p?.is_published) {
+        badge.innerHTML = '<div class="status-badge status-published">Опубликована ✅</div>';
+      } else {
+        badge.innerHTML = '<div class="status-badge status-draft">Черновик</div>';
+      }
+      document.getElementById('nf-missing-box').innerHTML = '';
+
+      showScreen('nanny-form');
+    }
+
+    function collectNannyFormData() {
+      return {
+        age: document.getElementById('nf-age').value ? parseInt(document.getElementById('nf-age').value) : null,
+        languages: getSelectedPills('nf-languages').join(','),
+        age_groups: getSelectedPills('nf-agegroups').join(','),
+        work_format: getSelectedPills('nf-workformat').join(','),
+        min_price: document.getElementById('nf-price').value ? parseFloat(document.getElementById('nf-price').value) : null,
+        about: document.getElementById('nf-about').value.trim()
+      };
+    }
+
+    async function upsertNannyProfile(fields) {
+      if (currentNannyProfile) {
+        const { data, error } = await sb
+          .from('nanny_profiles')
+          .update(fields)
+          .eq('telegram_id', telegramId)
+          .select()
+          .single();
+        return { data, error };
+      } else {
+        const { data, error } = await sb
+          .from('nanny_profiles')
+          .insert({ telegram_id: telegramId, ...fields })
+          .select()
+          .single();
+        return { data, error };
+      }
+    }
+
+    async function saveNannyDraft() {
+      const fields = collectNannyFormData();
+      const { data, error } = await upsertNannyProfile(fields);
+
+      if (error) {
+        alert('Ошибка сохранения: ' + error.message);
+        return;
+      }
+
+      currentNannyProfile = data;
+      alert('Анкета сохранена ✅ (пока как черновик)');
+      openNannyForm();
+    }
+
+    async function publishNannyProfile() {
+      const fields = collectNannyFormData();
+
+      const missing = [];
+      if (!currentUser.avatar_url) missing.push('Фотографию (в «Моём профиле»)');
+      if (!currentUser.name) missing.push('Имя (в «Моём профиле»)');
+      if (!currentUser.city) missing.push('Город (в «Моём профиле»)');
+      if (!fields.age) missing.push('Возраст');
+      if (!fields.languages) missing.push('Языки');
+      if (!fields.age_groups) missing.push('Возрастные группы');
+      if (!fields.work_format) missing.push('Формат работы');
+      if (!fields.min_price) missing.push('Минимальную стоимость');
+      if (!fields.about) missing.push('«О себе»');
+
+      if (missing.length > 0) {
+        const box = document.getElementById('nf-missing-box');
+        box.innerHTML = '<div class="warning">Чтобы опубликовать анкету, заполните:<br>• ' + missing.join('<br>• ') + '</div>';
+        await upsertNannyProfile(fields).then(res => {
+          if (!res.error) currentNannyProfile = res.data;
+        });
+        return;
+      }
+
+      fields.is_published = true;
+      if (!currentNannyProfile?.is_available) fields.is_available = true;
+
+      const { data, error } = await upsertNannyProfile(fields);
+
+      if (error) {
+        alert('Ошибка публикации: ' + error.message);
+        return;
+      }
+
+      currentNannyProfile = data;
+      alert('Анкета опубликована ❤️\nТеперь родители могут найти вас в поиске.');
       showHome(currentUser);
     }
 
