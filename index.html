@@ -55,6 +55,10 @@
   </div>
 
   <script>
+  
+    window.onerror = function(msg) {
+      document.getElementById('loading').textContent = 'JS ошибка: ' + msg;
+    };
     // ==== НАСТРОЙКИ SUPABASE — ЗАМЕНИ ЭТИ ДВЕ СТРОКИ ====
     const SUPABASE_URL = 'https://ponyiyijmamsecgrzmsa.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvbnlpeWlqbWFtc2VjZ3J6bXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzU0MTUsImV4cCI6MjEwNTc1MTQxNX0.YzG_QS07R3bqZTL8AkFB2jazUsfjcHjM6JJj1C0bnNU';
