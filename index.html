@@ -200,6 +200,31 @@
       border-color: #4A90D9;
     }
     .char-count { font-size: 12px; color: #999; text-align: right; }
+    .photo-thumb {
+      position: relative;
+      width: 70px;
+      height: 70px;
+      border-radius: 10px;
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+      background-color: #ddd;
+    }
+    .photo-thumb .remove-x {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      cursor: pointer;
+    }
     .status-badge {
       display: inline-block;
       padding: 4px 10px;
@@ -301,9 +326,14 @@
     <div id="nf-status-badge"></div>
     <div id="nf-missing-box"></div>
 
+    <div class="field-label">Фотографии *</div>
+    <div class="pill-group" id="nf-photos-grid" style="margin-bottom:10px;"></div>
+    <input type="file" id="nf-photo-input" accept="image/*" multiple onchange="onNannyPhotosSelected(event)" style="display:none;">
+    <button class="avatar-btn" style="width:auto;" onclick="document.getElementById('nf-photo-input').click()">+ Добавить фото</button>
+    <div id="nf-photo-status" style="font-size:13px;color:#888;margin-bottom:10px;"></div>
+
     <div class="field-label">Имя</div>
     <div class="readonly-field" id="nf-name-display">—</div>
-
     <div class="field-label">Город *</div>
     <input type="text" id="nf-city" placeholder="Например, Белград">
 
@@ -381,7 +411,8 @@
     let currentUser = null;
     let currentNannyProfile = null;
     let pendingAvatarUrl = null;
-
+    let nannyPhotos = [];
+    
     async function init() {
       if (!telegramId) {
         document.getElementById('loading').textContent = 'Не удалось получить данные Telegram. Открой приложение через кнопку в боте, а не напрямую в браузере.';
@@ -632,6 +663,49 @@
       document.getElementById('nf-about-count').textContent = val.length;
     }
 
+    function renderNannyPhotos() {
+      const grid = document.getElementById('nf-photos-grid');
+      grid.innerHTML = nannyPhotos.map((url, i) =>
+        `<div class="photo-thumb" style="background-image:url(${url})">
+           <div class="remove-x" onclick="removeNannyPhoto(${i})">×</div>
+         </div>`
+      ).join('');
+    }
+
+    function removeNannyPhoto(index) {
+      nannyPhotos.splice(index, 1);
+      renderNannyPhotos();
+    }
+
+    async function onNannyPhotosSelected(event) {
+      const files = Array.from(event.target.files);
+      if (!files.length) return;
+
+      const statusEl = document.getElementById('nf-photo-status');
+      statusEl.textContent = `Загрузка ${files.length} фото...`;
+
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${telegramId}_nf_${Date.now()}_${Math.random().toString(36).slice(2,7)}.${fileExt}`;
+
+        const { error: uploadError } = await sb.storage
+          .from('avatars')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          statusEl.textContent = 'Ошибка загрузки: ' + uploadError.message;
+          continue;
+        }
+
+        const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+        nannyPhotos.push(urlData.publicUrl);
+      }
+
+      renderNannyPhotos();
+      statusEl.textContent = 'Фото загружены ✅ (не забудьте нажать «Сохранить»)';
+      event.target.value = '';
+    }
+
     async function syncCityToProfile(cityValue) {
       if (cityValue && cityValue !== currentUser.city) {
         const { data, error } = await sb
@@ -646,6 +720,9 @@
 
     function openNannyForm() {
       const p = currentNannyProfile;
+      nannyPhotos = (p?.photos || '').split(',').map(s => s.trim()).filter(Boolean);
+      renderNannyPhotos();
+      document.getElementById('nf-photo-status').textContent = '';
       document.getElementById('nf-name-display').textContent = currentUser.name || 'Не указано (заполните в «Моём профиле»)';
       document.getElementById('nf-city').value = currentUser.city || '';
       document.getElementById('nf-age').value = p?.age || '';
@@ -670,6 +747,7 @@
 
     function collectNannyFormData() {
       return {
+        photos: nannyPhotos.join(','),
         age: document.getElementById('nf-age').value ? parseInt(document.getElementById('nf-age').value) : null,
         languages: getSelectedPills('nf-languages').join(','),
         age_groups: getSelectedPills('nf-agegroups').join(','),
@@ -720,6 +798,7 @@
 
       const missing = [];
       if (!currentUser.avatar_url) missing.push('Фотографию (в «Моём профиле»)');
+      if (nannyPhotos.length === 0) missing.push('Хотя бы одну фотографию в анкете');
       if (!currentUser.name) missing.push('Имя (в «Моём профиле»)');
       if (!cityValue) missing.push('Город');
       if (!fields.age) missing.push('Возраст');
