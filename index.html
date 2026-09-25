@@ -235,6 +235,71 @@
     }
     .status-draft { background: #eee; color: #666; }
     .status-published { background: #E8F5E9; color: #1B5E20; }
+
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .cal-nav-btn {
+      width: auto;
+      background: white;
+      color: #333;
+      font-size: 20px;
+      padding: 6px 16px;
+      margin: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .cal-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 6px;
+    }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      background: white;
+      color: #333;
+      border: 1px solid #eee;
+    }
+    .cal-day.empty-cell { visibility: hidden; cursor: default; }
+    .cal-day.st-green { background: #C8E6C9; border-color: #A5D6A7; }
+    .cal-day.st-yellow { background: #FFF3B0; border-color: #FFE082; }
+    .cal-day.st-red { background: #FFCDD2; border-color: #EF9A9A; }
+    .cal-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 18px;
+      font-size: 14px;
+      color: #555;
+    }
+    .cal-dot {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    .cal-green { background: #A5D6A7; }
+    .cal-yellow { background: #FFE082; }
+    .cal-red { background: #EF9A9A; }
+    .cal-empty { background: white; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -271,7 +336,7 @@
     </div>
     <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openNannyForm()"><span class="emoji">👩‍🍼</span> Моя анкета</div>
-    <div class="menu-item" onclick="stub('Доступность')"><span class="emoji">📅</span> Доступность</div>
+    <div class="menu-item" onclick="openCalendar()"><span class="emoji">📅</span> Доступность</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
@@ -455,6 +520,33 @@
     </div>
   </div>
 
+  <!-- ДОСТУПНОСТЬ -->
+  <div id="nanny-calendar" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Доступность</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="changeCalMonth(-1)">‹</button>
+      <div id="cal-month-label" style="font-weight:600;font-size:16px;"></div>
+      <button class="cal-nav-btn" onclick="changeCalMonth(1)">›</button>
+    </div>
+
+    <div class="cal-weekdays">
+      <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+
+    <div class="cal-legend">
+      <div><span class="cal-dot cal-green"></span> Свободна</div>
+      <div><span class="cal-dot cal-yellow"></span> Частично занята</div>
+      <div><span class="cal-dot cal-red"></span> Занята</div>
+      <div><span class="cal-dot cal-empty"></span> Не указано</div>
+    </div>
+    <p style="font-size:13px;color:#888;margin-top:16px;">Нажимайте на день, чтобы менять статус по кругу: свободна → частично занята → занята → не указано.</p>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       document.getElementById('loading').style.display = 'flex';
@@ -490,6 +582,8 @@
     let currentNannyProfile = null;
     let pendingAvatarUrl = null;
     let nannyPhotos = [];
+    let calYear, calMonth;
+    let availabilityMap = {};
     
     async function init() {
       if (!telegramId) {
@@ -616,6 +710,100 @@
       }
       currentNannyProfile = data;
       updateAvailSwitchUI();
+    }
+
+    // ==== КАЛЕНДАРЬ ДОСТУПНОСТИ ====
+
+    async function openCalendar() {
+      const today = new Date();
+      calYear = today.getFullYear();
+      calMonth = today.getMonth();
+      await loadAvailability();
+      renderCalendar();
+      showScreen('nanny-calendar');
+    }
+
+    async function loadAvailability() {
+      const { data, error } = await sb
+        .from('availability')
+        .select('*')
+        .eq('telegram_id', telegramId);
+
+      availabilityMap = {};
+      if (!error && data) {
+        data.forEach(row => { availabilityMap[row.date] = row.status; });
+      }
+    }
+
+    function changeCalMonth(delta) {
+      calMonth += delta;
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+      document.getElementById('cal-month-label').textContent = monthNames[calMonth] + ' ' + calYear;
+
+      const grid = document.getElementById('cal-grid');
+      grid.innerHTML = '';
+
+      const firstDay = new Date(calYear, calMonth, 1);
+      let startOffset = firstDay.getDay() - 1;
+      if (startOffset < 0) startOffset = 6;
+
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+      for (let i = 0; i < startOffset; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'cal-day empty-cell';
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const status = availabilityMap[dateStr];
+
+        const cell = document.createElement('div');
+        cell.className = 'cal-day' + (status ? ' st-' + status : '');
+        cell.textContent = d;
+        cell.onclick = () => cycleDayStatus(dateStr);
+        grid.appendChild(cell);
+      }
+    }
+
+    async function cycleDayStatus(dateStr) {
+      const order = [null, 'green', 'yellow', 'red'];
+      const current = availabilityMap[dateStr] || null;
+      const nextIndex = (order.indexOf(current) + 1) % order.length;
+      const next = order[nextIndex];
+
+      if (next === null) {
+        const { error } = await sb
+          .from('availability')
+          .delete()
+          .eq('telegram_id', telegramId)
+          .eq('date', dateStr);
+        if (error) { alert('Ошибка: ' + error.message); return; }
+        delete availabilityMap[dateStr];
+      } else if (current === null) {
+        const { error } = await sb
+          .from('availability')
+          .insert({ telegram_id: telegramId, date: dateStr, status: next });
+        if (error) { alert('Ошибка: ' + error.message); return; }
+        availabilityMap[dateStr] = next;
+      } else {
+        const { error } = await sb
+          .from('availability')
+          .update({ status: next })
+          .eq('telegram_id', telegramId)
+          .eq('date', dateStr);
+        if (error) { alert('Ошибка: ' + error.message); return; }
+        availabilityMap[dateStr] = next;
+      }
+
+      renderCalendar();
     }
 
     // ==== ПРОФИЛЬ ====
