@@ -371,6 +371,31 @@
     <textarea id="nf-about" maxlength="500" oninput="updateCharCount()"></textarea>
     <div class="char-count"><span id="nf-about-count">0</span>/500</div>
 
+    <div class="field-label" style="margin-top:28px;font-size:16px;border-top:1px solid #ddd;padding-top:20px;">Опыт</div>
+
+    <div class="field-label">Общий опыт (лет)</div>
+    <input type="number" id="nf-exp-years" placeholder="Например, 3">
+
+    <div class="field-label">Подробности опыта</div>
+    <textarea id="nf-exp-details" placeholder="Расскажите о своём опыте работы с детьми"></textarea>
+
+    <div class="toggle-card">
+      <div style="font-weight:600;">Есть опыт с детьми с особенностями</div>
+      <div class="switch" id="nf-special-switch" onclick="toggleSimpleSwitch('nf-special-switch')"></div>
+    </div>
+
+    <div class="field-label" style="margin-top:20px;font-size:16px;">Образование</div>
+    <p style="font-size:13px;color:#888;margin-top:-6px;">Можно указать до 3 записей — учебное заведение, курсы, мед. образование и т.п.</p>
+
+    <div class="field-label">Образование 1</div>
+    <input type="text" id="nf-edu-1" placeholder="Например: педагогический колледж, мед. курсы">
+
+    <div class="field-label">Образование 2</div>
+    <input type="text" id="nf-edu-2" placeholder="Необязательно">
+
+    <div class="field-label">Образование 3</div>
+    <input type="text" id="nf-edu-3" placeholder="Необязательно">
+
     <div class="save-wrap">
       <button class="btn-save" onclick="saveNannyDraft()">Сохранить</button>
       <button class="btn-publish" onclick="publishNannyProfile()">Опубликовать анкету</button>
@@ -642,6 +667,10 @@
 
     // ==== АНКЕТА НЯНИ ====
 
+    function toggleSimpleSwitch(id) {
+      document.getElementById(id).classList.toggle('on');
+    }
+
     function togglePill(el) {
       el.classList.toggle('selected');
     }
@@ -720,6 +749,13 @@
 
     function openNannyForm() {
       const p = currentNannyProfile;
+      document.getElementById('nf-exp-years').value = p?.experience_years || '';
+      document.getElementById('nf-exp-details').value = p?.experience_details || '';
+      document.getElementById('nf-special-switch').classList.toggle('on', !!p?.special_needs_experience);
+      document.getElementById('nf-edu-1').value = p?.education_1 || '';
+      document.getElementById('nf-edu-2').value = p?.education_2 || '';
+      document.getElementById('nf-edu-3').value = p?.education_3 || '';
+
       nannyPhotos = (p?.photos || '').split(',').map(s => s.trim()).filter(Boolean);
       renderNannyPhotos();
       document.getElementById('nf-photo-status').textContent = '';
@@ -748,6 +784,12 @@
     function collectNannyFormData() {
       return {
         photos: nannyPhotos.join(','),
+        experience_years: document.getElementById('nf-exp-years').value ? parseInt(document.getElementById('nf-exp-years').value) : null,
+        experience_details: document.getElementById('nf-exp-details').value.trim(),
+        special_needs_experience: document.getElementById('nf-special-switch').classList.contains('on'),
+        education_1: document.getElementById('nf-edu-1').value.trim(),
+        education_2: document.getElementById('nf-edu-2').value.trim(),
+        education_3: document.getElementById('nf-edu-3').value.trim(),
         age: document.getElementById('nf-age').value ? parseInt(document.getElementById('nf-age').value) : null,
         languages: getSelectedPills('nf-languages').join(','),
         age_groups: getSelectedPills('nf-agegroups').join(','),
