@@ -405,6 +405,17 @@
       <div class="pill" data-value="Другое" onclick="togglePill(this)">Другое</div>
     </div>
 
+    <div class="field-label" style="margin-top:20px;font-size:16px;">Дополнительные обязанности</div>
+    <div class="pill-group" id="nf-duties">
+      <div class="pill" data-value="Помощь с домашними заданиями" onclick="togglePill(this)">Помощь с домашними заданиями</div>
+      <div class="pill" data-value="Приготовление еды ребёнку" onclick="togglePill(this)">Приготовление еды ребёнку</div>
+      <div class="pill" data-value="Лёгкая помощь по дому" onclick="togglePill(this)">Лёгкая помощь по дому</div>
+      <div class="pill" data-value="Сопровождение ребёнка" onclick="togglePill(this)">Сопровождение ребёнка</div>
+      <div class="pill" data-value="Покупка продуктов/вещей" onclick="togglePill(this)">Покупка продуктов/вещей</div>
+      <div class="pill" data-value="Другое" onclick="togglePill(this)">Другое</div>
+    </div>
+    <input type="text" id="nf-duties-other" placeholder="Если выбрали «Другое» — уточните" style="margin-top:10px;">
+
     <div class="save-wrap">
       <button class="btn-save" onclick="saveNannyDraft()">Сохранить</button>
       <button class="btn-publish" onclick="publishNannyProfile()">Опубликовать анкету</button>
@@ -765,6 +776,8 @@
       document.getElementById('nf-edu-2').value = p?.education_2 || '';
       document.getElementById('nf-edu-3').value = p?.education_3 || '';
       setSelectedPills('nf-courses', p?.courses);
+      setSelectedPills('nf-duties', p?.duties);
+      document.getElementById('nf-duties-other').value = p?.duties_other_note || '';
 
       nannyPhotos = (p?.photos || '').split(',').map(s => s.trim()).filter(Boolean);
       renderNannyPhotos();
@@ -801,6 +814,8 @@
         education_2: document.getElementById('nf-edu-2').value.trim(),
         education_3: document.getElementById('nf-edu-3').value.trim(),
         courses: getSelectedPills('nf-courses').join(','),
+        duties: getSelectedPills('nf-duties').join(','),
+        duties_other_note: document.getElementById('nf-duties-other').value.trim(),
         age: document.getElementById('nf-age').value ? parseInt(document.getElementById('nf-age').value) : null,
         languages: getSelectedPills('nf-languages').join(','),
         age_groups: getSelectedPills('nf-agegroups').join(','),
