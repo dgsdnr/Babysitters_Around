@@ -416,6 +416,39 @@
     </div>
     <input type="text" id="nf-duties-other" placeholder="Если выбрали «Другое» — уточните" style="margin-top:10px;">
 
+    <div class="field-label" style="margin-top:20px;font-size:16px;">Дополнительно</div>
+
+    <div class="toggle-card">
+      <div style="font-weight:600;">Готова работать с проживанием</div>
+      <div class="switch" id="nf-liveIn" onclick="toggleSimpleSwitch('nf-liveIn')"></div>
+    </div>
+    <div class="toggle-card">
+      <div style="font-weight:600;">Есть автомобиль</div>
+      <div class="switch" id="nf-hasCar" onclick="toggleSimpleSwitch('nf-hasCar')"></div>
+    </div>
+    <div class="toggle-card">
+      <div style="font-weight:600;">Готова возить ребёнка на машине</div>
+      <div class="switch" id="nf-useCarWithChild" onclick="toggleSimpleSwitch('nf-useCarWithChild')"></div>
+    </div>
+    <div class="toggle-card">
+      <div style="font-weight:600;">Есть обучение первой помощи</div>
+      <div class="switch" id="nf-firstAid" onclick="toggleSimpleSwitch('nf-firstAid')"></div>
+    </div>
+    <div class="toggle-card">
+      <div style="font-weight:600;">Готова работать ночью</div>
+      <div class="switch" id="nf-nightWork" onclick="toggleSimpleSwitch('nf-nightWork')"></div>
+    </div>
+    <div class="toggle-card">
+      <div style="font-weight:600;">Готова сопровождать семью в поездках</div>
+      <div class="switch" id="nf-familyTrips" onclick="toggleSimpleSwitch('nf-familyTrips')"></div>
+    </div>
+
+    <div class="field-label">Интересы и хобби</div>
+    <input type="text" id="nf-interests" placeholder="Например: рисование, спорт, музыка">
+
+    <div class="field-label">Дополнительная информация</div>
+    <textarea id="nf-additional-info" placeholder="Всё, что ещё хотите рассказать о себе"></textarea>
+
     <div class="save-wrap">
       <button class="btn-save" onclick="saveNannyDraft()">Сохранить</button>
       <button class="btn-publish" onclick="publishNannyProfile()">Опубликовать анкету</button>
@@ -778,6 +811,14 @@
       setSelectedPills('nf-courses', p?.courses);
       setSelectedPills('nf-duties', p?.duties);
       document.getElementById('nf-duties-other').value = p?.duties_other_note || '';
+      document.getElementById('nf-liveIn').classList.toggle('on', !!p?.live_in);
+      document.getElementById('nf-hasCar').classList.toggle('on', !!p?.has_car);
+      document.getElementById('nf-useCarWithChild').classList.toggle('on', !!p?.use_car_with_child);
+      document.getElementById('nf-firstAid').classList.toggle('on', !!p?.first_aid_trained);
+      document.getElementById('nf-nightWork').classList.toggle('on', !!p?.night_work);
+      document.getElementById('nf-familyTrips').classList.toggle('on', !!p?.family_trips);
+      document.getElementById('nf-interests').value = p?.interests_hobbies || '';
+      document.getElementById('nf-additional-info').value = p?.additional_info || '';
 
       nannyPhotos = (p?.photos || '').split(',').map(s => s.trim()).filter(Boolean);
       renderNannyPhotos();
@@ -816,6 +857,14 @@
         courses: getSelectedPills('nf-courses').join(','),
         duties: getSelectedPills('nf-duties').join(','),
         duties_other_note: document.getElementById('nf-duties-other').value.trim(),
+        live_in: document.getElementById('nf-liveIn').classList.contains('on'),
+        has_car: document.getElementById('nf-hasCar').classList.contains('on'),
+        use_car_with_child: document.getElementById('nf-useCarWithChild').classList.contains('on'),
+        first_aid_trained: document.getElementById('nf-firstAid').classList.contains('on'),
+        night_work: document.getElementById('nf-nightWork').classList.contains('on'),
+        family_trips: document.getElementById('nf-familyTrips').classList.contains('on'),
+        interests_hobbies: document.getElementById('nf-interests').value.trim(),
+        additional_info: document.getElementById('nf-additional-info').value.trim(),
         age: document.getElementById('nf-age').value ? parseInt(document.getElementById('nf-age').value) : null,
         languages: getSelectedPills('nf-languages').join(','),
         age_groups: getSelectedPills('nf-agegroups').join(','),
