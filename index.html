@@ -396,6 +396,15 @@
     <div class="field-label">Образование 3</div>
     <input type="text" id="nf-edu-3" placeholder="Необязательно">
 
+    <div class="field-label" style="margin-top:20px;font-size:16px;">Курсы и дополнительное обучение</div>
+    <div class="pill-group" id="nf-courses">
+      <div class="pill" data-value="Первая помощь" onclick="togglePill(this)">Первая помощь</div>
+      <div class="pill" data-value="Педагогика" onclick="togglePill(this)">Педагогика</div>
+      <div class="pill" data-value="Психология" onclick="togglePill(this)">Психология</div>
+      <div class="pill" data-value="Раннее развитие" onclick="togglePill(this)">Раннее развитие</div>
+      <div class="pill" data-value="Другое" onclick="togglePill(this)">Другое</div>
+    </div>
+
     <div class="save-wrap">
       <button class="btn-save" onclick="saveNannyDraft()">Сохранить</button>
       <button class="btn-publish" onclick="publishNannyProfile()">Опубликовать анкету</button>
@@ -755,6 +764,7 @@
       document.getElementById('nf-edu-1').value = p?.education_1 || '';
       document.getElementById('nf-edu-2').value = p?.education_2 || '';
       document.getElementById('nf-edu-3').value = p?.education_3 || '';
+      setSelectedPills('nf-courses', p?.courses);
 
       nannyPhotos = (p?.photos || '').split(',').map(s => s.trim()).filter(Boolean);
       renderNannyPhotos();
@@ -790,6 +800,7 @@
         education_1: document.getElementById('nf-edu-1').value.trim(),
         education_2: document.getElementById('nf-edu-2').value.trim(),
         education_3: document.getElementById('nf-edu-3').value.trim(),
+        courses: getSelectedPills('nf-courses').join(','),
         age: document.getElementById('nf-age').value ? parseInt(document.getElementById('nf-age').value) : null,
         languages: getSelectedPills('nf-languages').join(','),
         age_groups: getSelectedPills('nf-agegroups').join(','),
