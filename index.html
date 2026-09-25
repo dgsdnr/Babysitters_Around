@@ -342,6 +342,27 @@
     .btn-view { background: #eee; color: #333; }
     .btn-contact { background: #4A90D9; color: white; }
     .no-results { color: #888; text-align: center; padding: 30px 10px; }
+
+    .nfp-photos { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; }
+    .nfp-photo {
+      width: 100px;
+      height: 100px;
+      border-radius: 12px;
+      background-size: cover;
+      background-position: center;
+      background-color: #ddd;
+      flex-shrink: 0;
+    }
+    .nfp-section-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 18px 0 8px;
+      color: #333;
+    }
+    .nfp-row { font-size: 14px; color: #444; margin-bottom: 6px; line-height: 1.5; }
+    .nfp-row b { color: #222; }
+    .nfp-name-line { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+    .nfp-sub-line { font-size: 14px; color: #888; margin-bottom: 14px; }
   </style>
 </head>
 <body>
@@ -647,6 +668,42 @@
     <div id="search-results-list"></div>
   </div>
 
+  <!-- ПОЛНАЯ АНКЕТА НЯНИ (глазами родителя) -->
+  <div id="nanny-full-profile" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Анкета няни</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+    <div id="nfp-content"></div>
+    <div class="save-wrap">
+      <button class="btn-contact" onclick="contactNanny()">Связаться с няней</button>
+      <button class="btn-secondary" onclick="showScreen('search-results')">Назад</button>
+    </div>
+  </div>
+
+  <!-- ПРОСМОТР КАЛЕНДАРЯ НЯНИ (только чтение) -->
+  <div id="view-calendar" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Доступность няни</div>
+      <button class="close-btn" onclick="showScreen('nanny-full-profile')">×</button>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="changeViewCalMonth(-1)">‹</button>
+      <div id="view-cal-month-label" style="font-weight:600;font-size:16px;"></div>
+      <button class="cal-nav-btn" onclick="changeViewCalMonth(1)">›</button>
+    </div>
+    <div class="cal-weekdays">
+      <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+    </div>
+    <div class="cal-grid" id="view-cal-grid"></div>
+    <div class="cal-legend">
+      <div><span class="cal-dot cal-green"></span> Свободна</div>
+      <div><span class="cal-dot cal-yellow"></span> Частично занята</div>
+      <div><span class="cal-dot cal-red"></span> Занята</div>
+      <div><span class="cal-dot cal-empty"></span> Не указано</div>
+    </div>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       document.getElementById('loading').style.display = 'flex';
@@ -915,9 +972,10 @@
             Возраст детей: ${groups}<br>
             От €${p.min_price || '—'} · ${statusLabel(item.status)}
           </div>
+          ${p.about ? `<div class="nanny-card-sub" style="margin-top:8px;">${p.about.slice(0, 90)}${p.about.length > 90 ? '…' : ''}</div>` : ''}
           <div class="nanny-card-buttons">
-            <button class="btn-view" onclick="stub('Просмотр анкеты')">Посмотреть анкету</button>
-            <button class="btn-contact" onclick="stub('Создание заявки')">Связаться</button>
+            <button class="btn-view" onclick="openNannyProfile(${p.telegram_id})">Посмотреть анкету</button>
+            <button class="btn-contact" onclick="contactNannyById(${p.telegram_id})">Связаться</button>
           </div>
         </div>
       `;
@@ -956,6 +1014,180 @@
       }
 
       container.innerHTML = html;
+    }
+
+    // ==== ПОЛНАЯ АНКЕТА НЯНИ (глазами родителя) ====
+
+    let viewingNannyId = null;
+    let viewingNannyUser = null;
+
+    async function openNannyProfile(nId) {
+      viewingNannyId = nId;
+
+      const { data: p } = await sb.from('nanny_profiles').select('*').eq('telegram_id', nId).single();
+      const { data: u } = await sb.from('users').select('*').eq('telegram_id', nId).single();
+      viewingNannyUser = u;
+
+      const photos = (p.photos || '').split(',').filter(Boolean);
+      const langs = (p.languages || '').split(',').filter(Boolean).join(', ') || '—';
+      const groups = (p.age_groups || '').split(',').filter(Boolean).join(', ') || '—';
+      const formats = (p.work_format || '').split(',').filter(Boolean).join(', ') || '—';
+      const courses = (p.courses || '').split(',').filter(Boolean).join(', ');
+      const duties = (p.duties || '').split(',').filter(Boolean).join(', ');
+      const edu = [p.education_1, p.education_2, p.education_3].filter(Boolean);
+
+      const yesNo = (val, label) => val ? `<div class="nfp-row">✅ ${label}</div>` : '';
+
+      let html = '';
+
+      if (photos.length) {
+        html += `<div class="nfp-photos">${photos.map(url => `<div class="nfp-photo" style="background-image:url(${url})"></div>`).join('')}</div>`;
+      }
+
+      html += `<div class="nfp-name-line">${u.name || 'Без имени'}${p.age ? ', ' + p.age : ''}</div>`;
+      html += `<div class="nfp-sub-line">${u.city || ''}</div>`;
+
+      html += `<div class="nfp-row"><b>Языки:</b> ${langs}</div>`;
+      html += `<div class="nfp-row"><b>Возрастные группы:</b> ${groups}</div>`;
+      html += `<div class="nfp-row"><b>Формат работы:</b> ${formats}</div>`;
+      html += `<div class="nfp-row"><b>Минимальная стоимость:</b> €${p.min_price || '—'}</div>`;
+
+      if (p.about) {
+        html += `<div class="nfp-section-title">О себе</div><div class="nfp-row">${p.about}</div>`;
+      }
+
+      if (p.experience_years || p.experience_details || p.special_needs_experience) {
+        html += `<div class="nfp-section-title">Опыт</div>`;
+        if (p.experience_years) html += `<div class="nfp-row"><b>Опыт:</b> ${p.experience_years} лет</div>`;
+        if (p.experience_details) html += `<div class="nfp-row">${p.experience_details}</div>`;
+        if (p.special_needs_experience) html += `<div class="nfp-row">✅ Есть опыт с детьми с особенностями</div>`;
+      }
+
+      if (edu.length) {
+        html += `<div class="nfp-section-title">Образование</div>` + edu.map(e => `<div class="nfp-row">• ${e}</div>`).join('');
+      }
+
+      if (courses) {
+        html += `<div class="nfp-section-title">Курсы и обучение</div><div class="nfp-row">${courses}</div>`;
+      }
+
+      if (duties) {
+        html += `<div class="nfp-section-title">Дополнительные обязанности</div><div class="nfp-row">${duties}</div>`;
+        if (p.duties_other_note) html += `<div class="nfp-row">${p.duties_other_note}</div>`;
+      }
+
+      const extras = yesNo(p.live_in, 'Готова работать с проживанием')
+        + yesNo(p.has_car, 'Есть автомобиль')
+        + yesNo(p.use_car_with_child, 'Готова возить ребёнка на машине')
+        + yesNo(p.first_aid_trained, 'Есть обучение первой помощи')
+        + yesNo(p.night_work, 'Готова работать ночью')
+        + yesNo(p.family_trips, 'Готова сопровождать семью в поездках');
+
+      if (extras) {
+        html += `<div class="nfp-section-title">Дополнительно</div>` + extras;
+      }
+
+      if (p.interests_hobbies) {
+        html += `<div class="nfp-row"><b>Интересы и хобби:</b> ${p.interests_hobbies}</div>`;
+      }
+      if (p.additional_info) {
+        html += `<div class="nfp-row">${p.additional_info}</div>`;
+      }
+
+      html += `<div class="menu-item" onclick="openViewCalendar()" style="margin-top:18px;">📅 Открыть календарь</div>`;
+
+      html += `<div class="nfp-section-title">Отзывы</div>`;
+      html += `<div class="nfp-row" style="color:#888;">Отзывы пока отсутствуют</div>`;
+
+      document.getElementById('nfp-content').innerHTML = html;
+      showScreen('nanny-full-profile');
+    }
+
+    function contactNanny() {
+      contactNannyById(viewingNannyId, viewingNannyUser?.username);
+    }
+
+    async function contactNannyById(nId, usernameParam) {
+      let username = usernameParam;
+      if (!username) {
+        const { data } = await sb.from('users').select('username').eq('telegram_id', nId).single();
+        username = data?.username;
+      }
+
+      if (!username) {
+        alert('У няни не указан Telegram username. Попросите её добавить username в настройках Telegram.');
+        return;
+      }
+
+      const link = 'https://t.me/' + username;
+      if (window.Telegram?.WebApp?.openTelegramLink) {
+        Telegram.WebApp.openTelegramLink(link);
+      } else {
+        window.open(link, '_blank');
+      }
+    }
+
+    // ==== ПРОСМОТР КАЛЕНДАРЯ НЯНИ (только чтение) ====
+
+    let viewCalYear, viewCalMonth, viewAvailabilityMap = {};
+
+    async function openViewCalendar() {
+      const today = new Date();
+      viewCalYear = today.getFullYear();
+      viewCalMonth = today.getMonth();
+      await loadViewAvailability();
+      renderViewCalendar();
+      showScreen('view-calendar');
+    }
+
+    async function loadViewAvailability() {
+      const { data, error } = await sb
+        .from('availability')
+        .select('*')
+        .eq('telegram_id', viewingNannyId);
+
+      viewAvailabilityMap = {};
+      if (!error && data) {
+        data.forEach(row => { viewAvailabilityMap[row.date] = row.status; });
+      }
+    }
+
+    function changeViewCalMonth(delta) {
+      viewCalMonth += delta;
+      if (viewCalMonth < 0) { viewCalMonth = 11; viewCalYear--; }
+      if (viewCalMonth > 11) { viewCalMonth = 0; viewCalYear++; }
+      renderViewCalendar();
+    }
+
+    function renderViewCalendar() {
+      const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+      document.getElementById('view-cal-month-label').textContent = monthNames[viewCalMonth] + ' ' + viewCalYear;
+
+      const grid = document.getElementById('view-cal-grid');
+      grid.innerHTML = '';
+
+      const firstDay = new Date(viewCalYear, viewCalMonth, 1);
+      let startOffset = firstDay.getDay() - 1;
+      if (startOffset < 0) startOffset = 6;
+
+      const daysInMonth = new Date(viewCalYear, viewCalMonth + 1, 0).getDate();
+
+      for (let i = 0; i < startOffset; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'cal-day empty-cell';
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = viewCalYear + '-' + String(viewCalMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const status = viewAvailabilityMap[dateStr];
+
+        const cell = document.createElement('div');
+        cell.className = 'cal-day' + (status ? ' st-' + status : '');
+        cell.style.cursor = 'default';
+        cell.textContent = d;
+        grid.appendChild(cell);
+      }
     }
 
     // ==== КАЛЕНДАРЬ ДОСТУПНОСТИ ====
