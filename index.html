@@ -300,6 +300,48 @@
     .cal-yellow { background: #FFE082; }
     .cal-red { background: #EF9A9A; }
     .cal-empty { background: white; border: 1px solid #ccc; }
+
+    .result-group-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #555;
+      margin: 20px 0 10px;
+    }
+    .nanny-card {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .nanny-card-top {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .nanny-card-photo {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+      background-color: #ddd;
+      flex-shrink: 0;
+    }
+    .nanny-card-name { font-weight: 700; font-size: 16px; }
+    .nanny-card-sub { font-size: 13px; color: #777; }
+    .nanny-card-meta { font-size: 13px; color: #555; margin-top: 8px; }
+    .nanny-card-buttons { display: flex; gap: 8px; margin-top: 12px; }
+    .nanny-card-buttons button {
+      flex: 1;
+      max-width: none;
+      padding: 10px;
+      font-size: 13px;
+      margin: 0;
+    }
+    .btn-view { background: #eee; color: #333; }
+    .btn-contact { background: #4A90D9; color: white; }
+    .no-results { color: #888; text-align: center; padding: 30px 10px; }
   </style>
 </head>
 <body>
@@ -316,7 +358,7 @@
   <div id="home-parent" class="screen">
     <div class="top-title">Главная</div>
     <div id="parent-hint"></div>
-    <div class="menu-item" onclick="stub('Поиск няни')"><span class="emoji">🔎</span> Найти няню</div>
+    <div class="menu-item" onclick="openSearch()"><span class="emoji">🔎</span> Найти няню</div>
     <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
@@ -551,6 +593,60 @@
     <p style="font-size:13px;color:#888;margin-top:16px;">Нажимайте на день, чтобы менять статус по кругу: свободна → частично занята → занята → не указано.</p>
   </div>
 
+  <!-- ПОИСК НЯНИ -->
+  <div id="parent-search" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Найти няню</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+
+    <div class="field-label">Город *</div>
+    <input type="text" id="ps-city" placeholder="Например, Белград">
+
+    <div class="field-label">Дата *</div>
+    <input type="date" id="ps-date">
+
+    <div class="field-label">Возраст ребёнка</div>
+    <div class="pill-group" id="ps-agegroups">
+      <div class="pill" data-value="0–1" onclick="togglePill(this)">0–1 год</div>
+      <div class="pill" data-value="1–3" onclick="togglePill(this)">1–3 года</div>
+      <div class="pill" data-value="3–6" onclick="togglePill(this)">3–6 лет</div>
+      <div class="pill" data-value="6–12" onclick="togglePill(this)">6–12 лет</div>
+      <div class="pill" data-value="12+" onclick="togglePill(this)">12+ лет</div>
+    </div>
+
+    <div class="field-label">Язык</div>
+    <div class="pill-group" id="ps-languages">
+      <div class="pill" data-value="Русский" onclick="togglePill(this)">Русский</div>
+      <div class="pill" data-value="Английский" onclick="togglePill(this)">Английский</div>
+      <div class="pill" data-value="Сербский" onclick="togglePill(this)">Сербский</div>
+      <div class="pill" data-value="Немецкий" onclick="togglePill(this)">Немецкий</div>
+    </div>
+
+    <div class="field-label">Формат работы</div>
+    <div class="pill-group" id="ps-workformat">
+      <div class="pill" data-value="У семьи" onclick="togglePill(this)">У семьи</div>
+      <div class="pill" data-value="У няни" onclick="togglePill(this)">У няни</div>
+      <div class="pill" data-value="В другом месте" onclick="togglePill(this)">В другом месте</div>
+    </div>
+
+    <div class="field-label">Время <span style="font-weight:400;color:#999;">(необязательно)</span></div>
+    <input type="text" id="ps-time" placeholder="Например, с 15:00 до 19:00">
+
+    <div class="save-wrap">
+      <button class="btn-publish" onclick="runSearch()">Искать</button>
+    </div>
+  </div>
+
+  <!-- РЕЗУЛЬТАТЫ ПОИСКА -->
+  <div id="search-results" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Результаты поиска</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+    <div id="search-results-list"></div>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       document.getElementById('loading').style.display = 'flex';
@@ -714,6 +810,152 @@
       }
       currentNannyProfile = data;
       updateAvailSwitchUI();
+    }
+
+    // ==== ПОИСК НЯНИ (родитель) ====
+
+    function openSearch() {
+      showScreen('parent-search');
+    }
+
+    function statusLabel(status) {
+      if (status === 'green') return '🟢 Свободна';
+      if (status === 'yellow') return '🟡 Частично занята';
+      if (status === 'red') return '🔴 Занята';
+      return '⚪ Доступность не указана';
+    }
+
+    async function runSearch() {
+      const city = document.getElementById('ps-city').value.trim();
+      const date = document.getElementById('ps-date').value;
+
+      if (!city || !date) {
+        alert('Укажите город и дату — это обязательные поля для поиска.');
+        return;
+      }
+
+      const selectedAgeGroups = getSelectedPills('ps-agegroups');
+      const selectedLangs = getSelectedPills('ps-languages');
+      const selectedFormats = getSelectedPills('ps-workformat');
+
+      const { data: profiles, error } = await sb
+        .from('nanny_profiles')
+        .select('*')
+        .eq('is_published', true)
+        .eq('is_available', true);
+
+      if (error) {
+        alert('Ошибка поиска: ' + error.message);
+        return;
+      }
+
+      const ids = profiles.map(p => p.telegram_id);
+      let usersMap = {};
+      let availMap = {};
+
+      if (ids.length > 0) {
+        const { data: usersData } = await sb.from('users').select('*').in('telegram_id', ids);
+        (usersData || []).forEach(u => { usersMap[u.telegram_id] = u; });
+
+        const { data: availData } = await sb.from('availability').select('*').eq('date', date).in('telegram_id', ids);
+        (availData || []).forEach(a => { availMap[a.telegram_id] = a.status; });
+      }
+
+      const cityLower = city.toLowerCase();
+
+      let results = profiles
+        .filter(p => {
+          const u = usersMap[p.telegram_id];
+          if (!u || !u.city) return false;
+          const uCityLower = u.city.toLowerCase();
+          if (!uCityLower.includes(cityLower) && !cityLower.includes(uCityLower)) return false;
+
+          if (selectedAgeGroups.length) {
+            const nGroups = (p.age_groups || '').split(',').map(s => s.trim());
+            if (!selectedAgeGroups.some(g => nGroups.includes(g))) return false;
+          }
+          if (selectedLangs.length) {
+            const nLangs = (p.languages || '').split(',').map(s => s.trim());
+            if (!selectedLangs.some(l => nLangs.includes(l))) return false;
+          }
+          if (selectedFormats.length) {
+            const nFormats = (p.work_format || '').split(',').map(s => s.trim());
+            if (!selectedFormats.some(f => nFormats.includes(f))) return false;
+          }
+          return true;
+        })
+        .map(p => ({
+          profile: p,
+          user: usersMap[p.telegram_id],
+          status: availMap[p.telegram_id] || null
+        }));
+
+      renderSearchResults(results);
+      showScreen('search-results');
+    }
+
+    function buildNannyCard(item) {
+      const u = item.user;
+      const p = item.profile;
+      const photo = u.avatar_url ? `style="background-image:url(${u.avatar_url})"` : '';
+      const langs = (p.languages || '').split(',').filter(Boolean).join(', ') || '—';
+      const groups = (p.age_groups || '').split(',').filter(Boolean).join(', ') || '—';
+
+      return `
+        <div class="nanny-card">
+          <div class="nanny-card-top">
+            <div class="nanny-card-photo" ${photo}></div>
+            <div>
+              <div class="nanny-card-name">${u.name || 'Без имени'}${p.age ? ', ' + p.age : ''}</div>
+              <div class="nanny-card-sub">${u.city || ''}</div>
+            </div>
+          </div>
+          <div class="nanny-card-meta">
+            Языки: ${langs}<br>
+            Возраст детей: ${groups}<br>
+            От €${p.min_price || '—'} · ${statusLabel(item.status)}
+          </div>
+          <div class="nanny-card-buttons">
+            <button class="btn-view" onclick="stub('Просмотр анкеты')">Посмотреть анкету</button>
+            <button class="btn-contact" onclick="stub('Создание заявки')">Связаться</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSearchResults(results) {
+      const container = document.getElementById('search-results-list');
+
+      if (results.length === 0) {
+        container.innerHTML = '<div class="no-results">По вашему запросу никого не нашлось. Попробуйте изменить параметры поиска.</div>';
+        return;
+      }
+
+      const groups = { green: [], yellow: [], red: [], none: [] };
+      results.forEach(r => {
+        if (r.status === 'green') groups.green.push(r);
+        else if (r.status === 'yellow') groups.yellow.push(r);
+        else if (r.status === 'red') groups.red.push(r);
+        else groups.none.push(r);
+      });
+
+      const showNone = results.length < 20;
+
+      let html = '';
+      if (groups.green.length) {
+        html += '<div class="result-group-title">🟢 Свободна</div>' + groups.green.map(buildNannyCard).join('');
+      }
+      if (groups.yellow.length) {
+        html += '<div class="result-group-title">🟡 Частично занята</div>' + groups.yellow.map(buildNannyCard).join('');
+      }
+      if (groups.red.length) {
+        html += '<div class="result-group-title">🔴 Занята</div>' + groups.red.map(buildNannyCard).join('');
+      }
+      if (showNone && groups.none.length) {
+        html += '<div class="result-group-title">⚪ Доступность не указана</div>' + groups.none.map(buildNannyCard).join('');
+      }
+
+      container.innerHTML = html;
     }
 
     // ==== КАЛЕНДАРЬ ДОСТУПНОСТИ ====
