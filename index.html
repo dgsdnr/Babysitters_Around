@@ -514,12 +514,16 @@
     <div class="field-label">Дополнительная информация</div>
     <textarea id="nf-additional-info" placeholder="Всё, что ещё хотите рассказать о себе"></textarea>
 
+    <div class="menu-item" onclick="openCalendar()" style="margin-top:20px;">
+      <span class="emoji">📅</span> Открыть календарь доступности
+    </div>
+
     <div class="save-wrap">
       <button class="btn-save" onclick="saveNannyDraft()">Сохранить</button>
       <button class="btn-publish" onclick="publishNannyProfile()">Опубликовать анкету</button>
     </div>
   </div>
-
+  
   <!-- ДОСТУПНОСТЬ -->
   <div id="nanny-calendar" class="screen">
     <div class="top-bar">
