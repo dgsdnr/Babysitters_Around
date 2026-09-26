@@ -1062,9 +1062,10 @@
         const other = otherMap[isParent ? r.nanny_telegram_id : r.parent_telegram_id];
         const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
         const badge = (!isParent && !r.nanny_seen && r.status === 'upcoming' && !isPast(r.date)) ? '<span class="new-badge">новая</span>' : '';
+        const cancelledBadge = r.status === 'cancelled' ? '<span style="color:#D32F2F;font-size:12px;font-weight:600;">Отменена</span>' : '';
         return `
           <div class="request-card">
-            <div class="request-card-title">${other?.name || 'Пользователь'} ${badge}</div>
+            <div class="request-card-title">${other?.name || 'Пользователь'} ${badge}${cancelledBadge}</div>
             <div class="request-card-sub">${dateFormatted}${r.time_info ? ', ' + r.time_info : ''}${r.city ? ' · ' + r.city : ''}</div>
             <button class="btn-view" onclick="openRequestDetail(${r.id})">Открыть заявку</button>
           </div>
