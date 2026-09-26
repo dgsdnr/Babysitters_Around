@@ -3,39 +3,42 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { nannyTelegramId, parentName, childInfo, date, timeInfo, city, workFormat, message, appUrl } = req.body;
+  const { type, nannyTelegramId, parentName, childInfo, date, timeInfo, city, workFormat, message, appUrl, reporterName, reporterRole, situationText } = req.body;
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     return res.status(500).json({ error: 'Bot token not configured' });
   }
 
-  const dateFormatted = new Date(date).toLocaleDateString('ru-RU', {
-    day: 'numeric', month: 'long'
-  });
+  let chatId, text, replyMarkup;
 
-  let text = `Новая заявка от ${parentName || 'родителя'}\n`;
-  if (childInfo) text += `👧 ${childInfo}\n`;
-  text += `📅 ${dateFormatted}\n`;
-  if (timeInfo) text += `🕐 ${timeInfo}\n`;
-  if (city) text += `📍 ${city}\n`;
-  if (workFormat) text += `🏠 ${workFormat}\n`;
-  if (message) text += `\n${message}`;
+  if (type === 'admin_report') {
+    chatId = process.env.ADMIN_TELEGRAM_ID;
+    text = `⚠️ Отчёт «Другое» по заявке\nОт: ${reporterName || 'пользователь'} (${reporterRole === 'parent' ? 'родитель' : 'няня'})\n\n${situationText || 'без описания'}`;
+    replyMarkup = undefined;
+  } else {
+    chatId = nannyTelegramId;
+    const dateFormatted = new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    text = `Новая заявка от ${parentName || 'родителя'}\n`;
+    if (childInfo) text += `👧 ${childInfo}\n`;
+    text += `📅 ${dateFormatted}\n`;
+    if (timeInfo) text += `🕐 ${timeInfo}\n`;
+    if (city) text += `📍 ${city}\n`;
+    if (workFormat) text += `🏠 ${workFormat}\n`;
+    if (message) text += `\n${message}`;
+    replyMarkup = { inline_keyboard: [[{ text: 'Открыть заявку', url: appUrl }]] };
+  }
 
   const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      chat_id: nannyTelegramId,
+      chat_id: chatId,
       text: text,
-      reply_markup: {
-        inline_keyboard: [[
-          { text: 'Открыть заявку', url: appUrl }
-        ]]
-      }
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {})
     })
   });
-
+  
   const result = await telegramRes.json();
 
   if (!result.ok) {
