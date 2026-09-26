@@ -343,6 +343,35 @@
     .btn-contact { background: #4A90D9; color: white; }
     .no-results { color: #888; text-align: center; padding: 30px 10px; }
 
+    .tab-pill {
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: white;
+      border: 1px solid #ddd;
+      font-size: 14px;
+      cursor: pointer;
+      color: #444;
+    }
+    .tab-pill.active { background: #333; color: white; border-color: #333; }
+    .request-card {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .request-card-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .request-card-sub { font-size: 13px; color: #777; margin-bottom: 10px; }
+    .new-badge {
+      display: inline-block;
+      background: #4A90D9;
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 8px;
+      margin-left: 6px;
+    }
+
     .nfp-photos { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; }
     .nfp-photo {
       width: 100px;
@@ -380,7 +409,7 @@
     <div class="top-title">Главная</div>
     <div id="parent-hint"></div>
     <div class="menu-item" onclick="openSearch()"><span class="emoji">🔎</span> Найти няню</div>
-    <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
+    <div class="menu-item" onclick="openMyRequests()"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
@@ -397,7 +426,7 @@
       </div>
       <div class="switch" id="availSwitch" onclick="toggleAvailable()"></div>
     </div>
-    <div class="menu-item" onclick="stub('Мои заявки')"><span class="emoji">📋</span> Мои заявки</div>
+    <div class="menu-item" onclick="openMyRequests()"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openNannyForm()"><span class="emoji">👩‍🍼</span> Моя анкета</div>
     <div class="menu-item" onclick="openCalendar()"><span class="emoji">📅</span> Доступность</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
@@ -754,6 +783,33 @@
     <button class="btn-secondary" onclick="goHome()">На главную</button>
   </div>
 
+  <!-- МОИ ЗАЯВКИ -->
+  <div id="my-requests" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Мои заявки</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+    <div class="pill-group" id="mr-tabs" style="margin-bottom:16px;"></div>
+    <div id="mr-list"></div>
+  </div>
+
+  <!-- ДЕТАЛИ ЗАЯВКИ -->
+  <div id="request-detail" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Заявка</div>
+      <button class="close-btn" onclick="showScreen('my-requests')">×</button>
+    </div>
+    <div id="rd-content"></div>
+  </div>
+
+  <!-- ПОДТВЕРЖДЕНИЕ ОТМЕНЫ -->
+  <div id="cancel-confirm" class="screen center">
+    <h1>Отменить заявку?</h1>
+    <p>Заявка будет закрыта и больше не будет отображаться среди предстоящих.</p>
+    <button class="btn-publish" onclick="confirmCancelRequest()">Отменить заявку</button>
+    <button class="btn-secondary" onclick="showScreen('request-detail')">Назад</button>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       document.getElementById('loading').style.display = 'flex';
@@ -917,6 +973,173 @@
       }
       currentNannyProfile = data;
       updateAvailSwitchUI();
+    }
+
+    // ==== МОИ ЗАЯВКИ ====
+
+    let mrCurrentTab = null;
+    let mrCurrentList = [];
+    let selectedRequestId = null;
+
+    function isPast(dateStr) {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const d = new Date(dateStr + 'T00:00:00');
+      return d < today;
+    }
+
+    async function openMyRequests() {
+      if (currentUser.role === 'parent') {
+        mrCurrentTab = 'upcoming';
+        await renderRequestTabs(['upcoming', 'past'], { upcoming: 'Предстоящие', past: 'Прошедшие' });
+      } else {
+        mrCurrentTab = 'new';
+        await renderRequestTabs(['new', 'upcoming', 'past'], { new: 'Новые', upcoming: 'Предстоящие', past: 'Прошедшие' });
+      }
+      showScreen('my-requests');
+    }
+
+    async function renderRequestTabs(tabKeys, labels) {
+      const tabsEl = document.getElementById('mr-tabs');
+      tabsEl.innerHTML = tabKeys.map(k =>
+        `<div class="tab-pill ${k === mrCurrentTab ? 'active' : ''}" onclick="switchRequestTab('${k}')">${labels[k]}</div>`
+      ).join('');
+      await loadAndRenderRequests();
+    }
+
+    async function switchRequestTab(key) {
+      mrCurrentTab = key;
+      document.querySelectorAll('#mr-tabs .tab-pill').forEach(el => el.classList.remove('active'));
+      event.target.classList.add('active');
+      await loadAndRenderRequests();
+    }
+
+    async function loadAndRenderRequests() {
+      const isParent = currentUser.role === 'parent';
+      const column = isParent ? 'parent_telegram_id' : 'nanny_telegram_id';
+
+      const { data, error } = await sb
+        .from('requests')
+        .select('*')
+        .eq(column, telegramId)
+        .order('date', { ascending: true });
+
+      if (error) {
+        document.getElementById('mr-list').innerHTML = '<div class="no-results">Ошибка загрузки заявок</div>';
+        return;
+      }
+
+      let filtered = [];
+      if (isParent) {
+        if (mrCurrentTab === 'upcoming') {
+          filtered = data.filter(r => r.status === 'upcoming' && !isPast(r.date));
+        } else {
+          filtered = data.filter(r => r.status !== 'upcoming' || isPast(r.date));
+        }
+      } else {
+        if (mrCurrentTab === 'new') {
+          filtered = data.filter(r => r.status === 'upcoming' && !isPast(r.date) && !r.nanny_seen);
+        } else if (mrCurrentTab === 'upcoming') {
+          filtered = data.filter(r => r.status === 'upcoming' && !isPast(r.date) && r.nanny_seen);
+        } else {
+          filtered = data.filter(r => r.status !== 'upcoming' || isPast(r.date));
+        }
+      }
+
+      mrCurrentList = filtered;
+
+      if (filtered.length === 0) {
+        document.getElementById('mr-list').innerHTML = '<div class="no-results">Здесь пока пусто</div>';
+        return;
+      }
+
+      const otherIds = [...new Set(filtered.map(r => isParent ? r.nanny_telegram_id : r.parent_telegram_id))];
+      const { data: otherUsers } = await sb.from('users').select('*').in('telegram_id', otherIds);
+      const otherMap = {};
+      (otherUsers || []).forEach(u => { otherMap[u.telegram_id] = u; });
+
+      document.getElementById('mr-list').innerHTML = filtered.map(r => {
+        const other = otherMap[isParent ? r.nanny_telegram_id : r.parent_telegram_id];
+        const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+        const badge = (!isParent && !r.nanny_seen && r.status === 'upcoming' && !isPast(r.date)) ? '<span class="new-badge">новая</span>' : '';
+        return `
+          <div class="request-card">
+            <div class="request-card-title">${other?.name || 'Пользователь'} ${badge}</div>
+            <div class="request-card-sub">${dateFormatted}${r.time_info ? ', ' + r.time_info : ''}${r.city ? ' · ' + r.city : ''}</div>
+            <button class="btn-view" onclick="openRequestDetail('${r.id}')">Открыть заявку</button>
+          </div>
+        `;
+      }).join('');
+
+      // помечаем новые заявки как просмотренные после отрисовки
+      if (!isParent) {
+        const toMark = filtered.filter(r => !r.nanny_seen).map(r => r.id);
+        if (toMark.length) {
+          await sb.from('requests').update({ nanny_seen: true }).in('id', toMark);
+        }
+      }
+    }
+
+    async function openRequestDetail(id) {
+      selectedRequestId = id;
+      const r = mrCurrentList.find(x => x.id === id);
+      if (!r) return;
+
+      const isParent = currentUser.role === 'parent';
+      const otherId = isParent ? r.nanny_telegram_id : r.parent_telegram_id;
+      const { data: other } = await sb.from('users').select('*').eq('telegram_id', otherId).single();
+
+      const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      let html = `
+        <div class="nfp-name-line">${other?.name || 'Пользователь'}</div>
+        <div class="nfp-row"><b>Дата:</b> ${dateFormatted}</div>
+        ${r.time_info ? `<div class="nfp-row"><b>Время:</b> ${r.time_info}</div>` : ''}
+        ${r.city ? `<div class="nfp-row"><b>Город:</b> ${r.city}</div>` : ''}
+        ${r.child_info ? `<div class="nfp-row"><b>Дети:</b> ${r.child_info}</div>` : ''}
+        ${r.work_format ? `<div class="nfp-row"><b>Формат:</b> ${r.work_format}</div>` : ''}
+        ${r.is_recurring ? `<div class="nfp-row">✅ Регулярно</div>` : ''}
+        ${r.message ? `<div class="nfp-section-title">Сообщение</div><div class="nfp-row">${r.message}</div>` : ''}
+        <div class="nfp-row" style="margin-top:10px;color:#888;">Статус: ${requestStatusLabel(r)}</div>
+      `;
+
+      document.getElementById('rd-content').innerHTML = html;
+
+      const container = document.getElementById('rd-content');
+      const contactBtn = document.createElement('button');
+      contactBtn.className = 'btn-contact';
+      contactBtn.style.marginTop = '16px';
+      contactBtn.textContent = 'Написать в Telegram';
+      contactBtn.onclick = () => contactNannyById(otherId, other?.username);
+      container.appendChild(contactBtn);
+
+      if (isParent && r.status === 'upcoming' && !isPast(r.date)) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn-secondary';
+        cancelBtn.textContent = 'Отменить заявку';
+        cancelBtn.onclick = () => showScreen('cancel-confirm');
+        container.appendChild(cancelBtn);
+      }
+
+      showScreen('request-detail');
+    }
+
+    function requestStatusLabel(r) {
+      if (r.status === 'cancelled') return 'Отменена';
+      if (r.status === 'completed') return 'Состоялась';
+      if (r.status === 'declined_other') return 'Другое';
+      if (isPast(r.date)) return 'Прошедшая';
+      return 'Предстоящая';
+    }
+
+    async function confirmCancelRequest() {
+      const { error } = await sb.from('requests').update({ status: 'cancelled' }).eq('id', selectedRequestId);
+      if (error) {
+        alert('Ошибка: ' + error.message);
+        return;
+      }
+      showScreen('my-requests');
+      openMyRequests();
     }
 
     // ==== ПОИСК НЯНИ (родитель) ====
