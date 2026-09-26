@@ -1163,7 +1163,8 @@
     function requestStatusLabel(r) {
       if (r.status === 'cancelled') return 'Отменена';
       if (r.status === 'completed') return 'Состоялась';
-      if (r.status === 'declined_other') return 'Другое';
+      if (r.status === 'not_happened') return 'Не состоялась';
+      if (r.status === 'reported_other') return 'Другое (на рассмотрении)';
       if (isPast(r.date)) return 'Прошедшая';
       return 'Предстоящая';
     }
@@ -1185,9 +1186,9 @@
       if (type === 'yes') {
         updates.status = 'completed';
       } else if (type === 'no') {
-        updates.status = 'declined_other';
+        updates.status = 'not_happened';
       } else if (type === 'other') {
-        updates.status = 'declined_other';
+        updates.status = 'reported_other';
         updates.message = (document.getElementById('meeting-other-text').value.trim() || '') + '\n\n[Ответ «Другое» на вопрос о встрече]';
       }
 
