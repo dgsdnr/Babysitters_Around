@@ -1066,24 +1066,21 @@
           <div class="request-card">
             <div class="request-card-title">${other?.name || 'Пользователь'} ${badge}</div>
             <div class="request-card-sub">${dateFormatted}${r.time_info ? ', ' + r.time_info : ''}${r.city ? ' · ' + r.city : ''}</div>
-            <button class="btn-view" onclick="openRequestDetail('${r.id}')">Открыть заявку</button>
+            <button class="btn-view" onclick="openRequestDetail(${r.id})">Открыть заявку</button>
           </div>
         `;
       }).join('');
-
-      // помечаем новые заявки как просмотренные после отрисовки
-      if (!isParent) {
-        const toMark = filtered.filter(r => !r.nanny_seen).map(r => r.id);
-        if (toMark.length) {
-          await sb.from('requests').update({ nanny_seen: true }).in('id', toMark);
-        }
-      }
     }
 
     async function openRequestDetail(id) {
       selectedRequestId = id;
       const r = mrCurrentList.find(x => x.id === id);
       if (!r) return;
+
+      if (currentUser.role === 'babysitter' && !r.nanny_seen) {
+        await sb.from('requests').update({ nanny_seen: true }).eq('id', id);
+        r.nanny_seen = true;
+      }
 
       const isParent = currentUser.role === 'parent';
       const otherId = isParent ? r.nanny_telegram_id : r.parent_telegram_id;
