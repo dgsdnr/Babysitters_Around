@@ -807,14 +807,14 @@
     <h1>Подтвердите</h1>
     <p>Вы уверены, что встреча не состоялась? После подтверждения заявка будет закрыта.</p>
     <button class="btn-publish" onclick="finalizeMeetingAnswer('no')">Да, не состоялась</button>
-    <button class="btn-secondary" onclick="openRequestDetail(selectedRequestId)">Назад</button>
+    <button class="btn-secondary" onclick="showScreen('my-requests')">Назад</button>
   </div>
 
   <!-- ВСТРЕЧА — ДРУГОЕ -->
   <div id="meeting-other" class="screen">
     <div class="top-bar">
       <div class="top-title">Опишите ситуацию</div>
-      <button class="close-btn" onclick="openRequestDetail(selectedRequestId)">×</button>
+      <button class="close-btn" onclick="showScreen('my-requests')">×</button>
     </div>
     <textarea id="meeting-other-text" placeholder="Расскажите, что произошло — мы передадим это администратору"></textarea>
     <div class="save-wrap">
@@ -1052,17 +1052,17 @@
       let filtered = [];
       if (isParent) {
         if (mrCurrentTab === 'upcoming') {
-          filtered = data.filter(r => r.status === 'upcoming' && !isPast(r.date));
+          filtered = data.filter(r => r.status === 'upcoming');
         } else {
-          filtered = data.filter(r => r.status !== 'upcoming' || isPast(r.date));
+          filtered = data.filter(r => r.status !== 'upcoming');
         }
       } else {
         if (mrCurrentTab === 'new') {
-          filtered = data.filter(r => r.status === 'upcoming' && !isPast(r.date) && !r.nanny_seen);
+          filtered = data.filter(r => r.status === 'upcoming' && !r.nanny_seen);
         } else if (mrCurrentTab === 'upcoming') {
-          filtered = data.filter(r => r.status === 'upcoming' && !isPast(r.date) && r.nanny_seen);
+          filtered = data.filter(r => r.status === 'upcoming' && r.nanny_seen);
         } else {
-          filtered = data.filter(r => r.status !== 'upcoming' || isPast(r.date));
+          filtered = data.filter(r => r.status !== 'upcoming');
         }
       }
 
@@ -1081,16 +1081,34 @@
       document.getElementById('mr-list').innerHTML = filtered.map(r => {
         const other = otherMap[isParent ? r.nanny_telegram_id : r.parent_telegram_id];
         const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-        const badge = (!isParent && !r.nanny_seen && r.status === 'upcoming' && !isPast(r.date)) ? '<span class="new-badge">новая</span>' : '';
+        const badge = (!isParent && !r.nanny_seen && r.status === 'upcoming') ? '<span class="new-badge">новая</span>' : '';
         const cancelledBadge = r.status === 'cancelled' ? '<span style="color:#D32F2F;font-size:12px;font-weight:600;">Отменена</span>' : '';
+        const needsAnswer = r.status === 'upcoming' && isPast(r.date) && !r.meeting_happened;
+
+        const actionHtml = needsAnswer
+          ? `
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Встреча состоялась?</div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-save" style="max-width:none;padding:8px;font-size:13px;" onclick="answerMeetingFromCard(${r.id}, 'yes')">Да</button>
+              <button class="btn-secondary" style="max-width:none;padding:8px;font-size:13px;" onclick="answerMeetingFromCard(${r.id}, 'no')">Нет</button>
+              <button class="btn-secondary" style="max-width:none;padding:8px;font-size:13px;" onclick="answerMeetingFromCard(${r.id}, 'other')">Другое</button>
+            </div>
+          `
+          : `<button class="btn-view" onclick="openRequestDetail(${r.id})">Открыть заявку</button>`;
+
         return `
           <div class="request-card">
             <div class="request-card-title">${other?.name || 'Пользователь'} ${badge}${cancelledBadge}</div>
             <div class="request-card-sub">${dateFormatted}${r.time_info ? ', ' + r.time_info : ''}${r.city ? ' · ' + r.city : ''}</div>
-            <button class="btn-view" onclick="openRequestDetail(${r.id})">Открыть заявку</button>
+            ${actionHtml}
           </div>
         `;
       }).join('');
+    }
+
+    function answerMeetingFromCard(id, type) {
+      selectedRequestId = id;
+      answerMeeting(type);
     }
 
     async function openRequestDetail(id) {
@@ -1120,19 +1138,6 @@
         ${r.message ? `<div class="nfp-section-title">Сообщение</div><div class="nfp-row">${r.message}</div>` : ''}
         <div class="nfp-row" style="margin-top:10px;color:#888;">Статус: ${requestStatusLabel(r)}</div>
       `;
-
-      const needsMeetingQuestion = r.status === 'upcoming' && isPast(r.date) && !r.meeting_happened;
-
-      if (needsMeetingQuestion) {
-        html += `
-          <div class="nfp-section-title">Встреча состоялась?</div>
-          <div style="display:flex; gap:8px; margin-top:8px;">
-            <button class="btn-save" style="max-width:none;" onclick="answerMeeting('yes')">Да</button>
-            <button class="btn-secondary" style="max-width:none;" onclick="answerMeeting('no')">Нет</button>
-          </div>
-          <button class="btn-secondary" onclick="answerMeeting('other')">Другое</button>
-        `;
-      }
 
       document.getElementById('rd-content').innerHTML = html;
 
