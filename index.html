@@ -704,6 +704,53 @@
     </div>
   </div>
 
+  <!-- СОЗДАНИЕ ЗАЯВКИ -->
+  <div id="create-request" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Создание заявки</div>
+      <button class="close-btn" onclick="showScreen('nanny-full-profile')">×</button>
+    </div>
+
+    <div class="field-label">Город</div>
+    <input type="text" id="cr-city">
+
+    <div class="field-label">Дети</div>
+    <input type="text" id="cr-children" placeholder="Например: Маша, 4 года">
+
+    <div class="field-label">Дата</div>
+    <input type="date" id="cr-date">
+
+    <div class="field-label">Время <span style="font-weight:400;color:#999;">(необязательно)</span></div>
+    <input type="text" id="cr-time" placeholder="Например, с 15:00 до 19:00">
+
+    <div class="field-label">Формат работы</div>
+    <div class="pill-group" id="cr-workformat">
+      <div class="pill" data-value="У семьи" onclick="togglePill(this)">У семьи</div>
+      <div class="pill" data-value="У няни" onclick="togglePill(this)">У няни</div>
+      <div class="pill" data-value="В другом месте" onclick="togglePill(this)">В другом месте</div>
+    </div>
+
+    <div class="toggle-card">
+      <div style="font-weight:600;">Регулярно</div>
+      <div class="switch" id="cr-recurring" onclick="toggleSimpleSwitch('cr-recurring')"></div>
+    </div>
+
+    <div class="field-label">Сообщение няне <span style="font-weight:400;color:#999;">(до 1000 символов)</span></div>
+    <textarea id="cr-message" maxlength="1000"></textarea>
+
+    <div class="save-wrap">
+      <button class="btn-publish" onclick="submitRequest()">Отправить заявку</button>
+    </div>
+  </div>
+
+  <!-- ПОДТВЕРЖДЕНИЕ ОТПРАВКИ -->
+  <div id="request-sent" class="screen center">
+    <h1>Заявка отправлена няне ❤️</h1>
+    <p>Теперь вы можете написать няне лично в Telegram.</p>
+    <button class="btn-contact" onclick="openSentNannyChat()">Написать няне в Telegram</button>
+    <button class="btn-secondary" onclick="goHome()">На главную</button>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       document.getElementById('loading').style.display = 'flex';
@@ -885,6 +932,8 @@
     async function runSearch() {
       const city = document.getElementById('ps-city').value.trim();
       const date = document.getElementById('ps-date').value;
+      lastSearchDate = date;
+      lastSearchTime = document.getElementById('ps-time').value.trim();
 
       if (!city || !date) {
         alert('Укажите город и дату — это обязательные поля для поиска.');
@@ -894,6 +943,7 @@
       const selectedAgeGroups = getSelectedPills('ps-agegroups');
       const selectedLangs = getSelectedPills('ps-languages');
       const selectedFormats = getSelectedPills('ps-workformat');
+      lastSearchWorkFormat = selectedFormats.join(',');
 
       const { data: profiles, error } = await sb
         .from('nanny_profiles')
@@ -1020,7 +1070,10 @@
 
     let viewingNannyId = null;
     let viewingNannyUser = null;
-
+    let lastSearchDate = null;
+    let lastSearchTime = null;
+    let lastSearchWorkFormat = null;
+    
     async function openNannyProfile(nId) {
       viewingNannyId = nId;
 
@@ -1104,7 +1157,18 @@
     }
 
     function contactNanny() {
-      contactNannyById(viewingNannyId, viewingNannyUser?.username);
+      openCreateRequest();
+    }
+
+    function openCreateRequest() {
+      document.getElementById('cr-city').value = viewingNannyUser?.city || currentUser.city || '';
+      document.getElementById('cr-children').value = currentUser.children || '';
+      document.getElementById('cr-date').value = lastSearchDate || '';
+      document.getElementById('cr-time').value = lastSearchTime || '';
+      document.getElementById('cr-message').value = '';
+      document.getElementById('cr-recurring').classList.remove('on');
+      setSelectedPills('cr-workformat', lastSearchWorkFormat || '');
+      showScreen('create-request');
     }
 
     async function contactNannyById(nId, usernameParam) {
@@ -1125,6 +1189,70 @@
       } else {
         window.open(link, '_blank');
       }
+    }
+
+    async function submitRequest() {
+      const date = document.getElementById('cr-date').value;
+      if (!date) {
+        alert('Укажите дату встречи.');
+        return;
+      }
+
+      const requestData = {
+        parent_telegram_id: telegramId,
+        nanny_telegram_id: viewingNannyId,
+        child_info: document.getElementById('cr-children').value.trim(),
+        date: date,
+        time_info: document.getElementById('cr-time').value.trim(),
+        city: document.getElementById('cr-city').value.trim(),
+        work_format: getSelectedPills('cr-workformat').join(','),
+        is_recurring: document.getElementById('cr-recurring').classList.contains('on'),
+        message: document.getElementById('cr-message').value.trim(),
+        status: 'upcoming'
+      };
+
+      const { error } = await sb.from('requests').insert(requestData);
+
+      if (error) {
+        alert('Ошибка отправки заявки: ' + error.message);
+        return;
+      }
+
+      // сохраняем недостающие данные в профиль родителя
+      const profileUpdates = {};
+      if (!currentUser.city && requestData.city) profileUpdates.city = requestData.city;
+      if (!currentUser.children && requestData.child_info) profileUpdates.children = requestData.child_info;
+      if (Object.keys(profileUpdates).length) {
+        const { data } = await sb.from('users').update(profileUpdates).eq('telegram_id', telegramId).select().single();
+        if (data) currentUser = data;
+      }
+
+      // уведомляем няню через бота
+      try {
+        await fetch('/api/notify-nanny', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nannyTelegramId: viewingNannyId,
+            parentName: currentUser.name,
+            childInfo: requestData.child_info,
+            date: requestData.date,
+            timeInfo: requestData.time_info,
+            city: requestData.city,
+            workFormat: requestData.work_format,
+            message: requestData.message,
+            appUrl: 'https://babysitters-around-1oh3.vercel.app/'
+          })
+        });
+      } catch (e) {
+        // даже если уведомление не отправилось, заявка уже сохранена — не блокируем пользователя
+      }
+
+      showScreen('request-sent');
+    }
+
+    function openSentNannyChat() {
+      contactNannyById(viewingNannyId, viewingNannyUser?.username);
     }
 
     // ==== ПРОСМОТР КАЛЕНДАРЯ НЯНИ (только чтение) ====
