@@ -708,7 +708,7 @@
   <div id="create-request" class="screen">
     <div class="top-bar">
       <div class="top-title">Создание заявки</div>
-      <button class="close-btn" onclick="showScreen('nanny-full-profile')">×</button>
+      <button class="close-btn" onclick="showScreen(requestOrigin)">×</button>
     </div>
 
     <div class="field-label">Город</div>
@@ -748,6 +748,9 @@
     <h1>Заявка отправлена няне ❤️</h1>
     <p>Теперь вы можете написать няне лично в Telegram.</p>
     <button class="btn-contact" onclick="openSentNannyChat()">Написать няне в Telegram</button>
+    <div class="hint" id="chat-opened-hint" style="display:none; max-width:320px; text-align:left;">
+      Чат с няней открылся у вас поверх этого приложения — сверните или закройте Mini App, чтобы его увидеть.
+    </div>
     <button class="btn-secondary" onclick="goHome()">На главную</button>
   </div>
 
@@ -1025,7 +1028,7 @@
           ${p.about ? `<div class="nanny-card-sub" style="margin-top:8px;">${p.about.slice(0, 90)}${p.about.length > 90 ? '…' : ''}</div>` : ''}
           <div class="nanny-card-buttons">
             <button class="btn-view" onclick="openNannyProfile(${p.telegram_id})">Посмотреть анкету</button>
-            <button class="btn-contact" onclick="contactNannyById(${p.telegram_id})">Связаться</button>
+            <button class="btn-contact" onclick="startRequestFromCard(${p.telegram_id})">Связаться</button>
           </div>
         </div>
       `;
@@ -1073,6 +1076,7 @@
     let lastSearchDate = null;
     let lastSearchTime = null;
     let lastSearchWorkFormat = null;
+    let requestOrigin = 'search-results';
     
     async function openNannyProfile(nId) {
       viewingNannyId = nId;
@@ -1157,6 +1161,15 @@
     }
 
     function contactNanny() {
+      requestOrigin = 'nanny-full-profile';
+      openCreateRequest();
+    }
+
+    async function startRequestFromCard(nId) {
+      viewingNannyId = nId;
+      const { data: u } = await sb.from('users').select('*').eq('telegram_id', nId).single();
+      viewingNannyUser = u;
+      requestOrigin = 'search-results';
       openCreateRequest();
     }
 
@@ -1253,6 +1266,7 @@
 
     function openSentNannyChat() {
       contactNannyById(viewingNannyId, viewingNannyUser?.username);
+      document.getElementById('chat-opened-hint').style.display = 'block';
     }
 
     // ==== ПРОСМОТР КАЛЕНДАРЯ НЯНИ (только чтение) ====
