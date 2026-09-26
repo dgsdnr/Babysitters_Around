@@ -802,6 +802,26 @@
     <div id="rd-content"></div>
   </div>
 
+  <!-- ВСТРЕЧА НЕ СОСТОЯЛАСЬ — подтверждение -->
+  <div id="meeting-no-confirm" class="screen center">
+    <h1>Подтвердите</h1>
+    <p>Вы уверены, что встреча не состоялась? После подтверждения заявка будет закрыта.</p>
+    <button class="btn-publish" onclick="finalizeMeetingAnswer('no')">Да, не состоялась</button>
+    <button class="btn-secondary" onclick="openRequestDetail(selectedRequestId)">Назад</button>
+  </div>
+
+  <!-- ВСТРЕЧА — ДРУГОЕ -->
+  <div id="meeting-other" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Опишите ситуацию</div>
+      <button class="close-btn" onclick="openRequestDetail(selectedRequestId)">×</button>
+    </div>
+    <textarea id="meeting-other-text" placeholder="Расскажите, что произошло — мы передадим это администратору"></textarea>
+    <div class="save-wrap">
+      <button class="btn-publish" onclick="finalizeMeetingAnswer('other')">Отправить</button>
+    </div>
+  </div>
+
   <!-- ПОДТВЕРЖДЕНИЕ ОТМЕНЫ -->
   <div id="cancel-confirm" class="screen center">
     <h1>Отменить заявку?</h1>
@@ -1101,6 +1121,19 @@
         <div class="nfp-row" style="margin-top:10px;color:#888;">Статус: ${requestStatusLabel(r)}</div>
       `;
 
+      const needsMeetingQuestion = r.status === 'upcoming' && isPast(r.date) && !r.meeting_happened;
+
+      if (needsMeetingQuestion) {
+        html += `
+          <div class="nfp-section-title">Встреча состоялась?</div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="btn-save" style="max-width:none;" onclick="answerMeeting('yes')">Да</button>
+            <button class="btn-secondary" style="max-width:none;" onclick="answerMeeting('no')">Нет</button>
+          </div>
+          <button class="btn-secondary" onclick="answerMeeting('other')">Другое</button>
+        `;
+      }
+
       document.getElementById('rd-content').innerHTML = html;
 
       const container = document.getElementById('rd-content');
@@ -1128,6 +1161,43 @@
       if (r.status === 'declined_other') return 'Другое';
       if (isPast(r.date)) return 'Прошедшая';
       return 'Предстоящая';
+    }
+
+    function answerMeeting(type) {
+      if (type === 'yes') {
+        finalizeMeetingAnswer('yes');
+      } else if (type === 'no') {
+        showScreen('meeting-no-confirm');
+      } else {
+        document.getElementById('meeting-other-text').value = '';
+        showScreen('meeting-other');
+      }
+    }
+
+    async function finalizeMeetingAnswer(type) {
+      const updates = { meeting_happened: type };
+
+      if (type === 'yes') {
+        updates.status = 'completed';
+      } else if (type === 'no') {
+        updates.status = 'declined_other';
+      } else if (type === 'other') {
+        updates.status = 'declined_other';
+        updates.message = (document.getElementById('meeting-other-text').value.trim() || '') + '\n\n[Ответ «Другое» на вопрос о встрече]';
+      }
+
+      const { error } = await sb.from('requests').update(updates).eq('id', selectedRequestId);
+      if (error) {
+        alert('Ошибка: ' + error.message);
+        return;
+      }
+
+      if (type === 'yes') {
+        alert('Спасибо! Теперь вы можете оставить отзыв (раздел «Отзывы» скоро будет готов).');
+      }
+
+      showScreen('my-requests');
+      openMyRequests();
     }
 
     async function confirmCancelRequest() {
