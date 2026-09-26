@@ -1197,6 +1197,23 @@
         return;
       }
 
+      if (type === 'other') {
+        try {
+          await fetch('/api/notify-nanny', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'admin_report',
+              reporterName: currentUser.name,
+              reporterRole: currentUser.role,
+              situationText: document.getElementById('meeting-other-text').value.trim()
+            })
+          });
+        } catch (e) {
+          // не блокируем пользователя, если уведомление не дошло
+        }
+      }
+
       if (type === 'yes') {
         alert('Спасибо! Теперь вы можете оставить отзыв (раздел «Отзывы» скоро будет готов).');
       }
