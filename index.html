@@ -421,6 +421,12 @@
 
   <div id="loading" class="center">Загрузка...</div>
 
+  <div id="fatal-error" class="screen center">
+    <h1>Что-то пошло не так</h1>
+    <p>Попробуйте перезагрузить приложение.</p>
+    <button class="btn-publish" onclick="reloadApp()">Перезагрузить приложение</button>
+  </div>
+
   <div id="welcome" class="screen center">
     <h1>Babysitters Around 👶</h1>
     <p>Находите нянь рядом с вами или предлагайте свои услуги</p>
@@ -926,9 +932,18 @@
 
   <script>
     window.onerror = function(msg) {
-      document.getElementById('loading').style.display = 'flex';
-      document.getElementById('loading').textContent = 'JS ошибка: ' + msg;
+      showFatalError();
     };
+
+    function showFatalError() {
+      document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('fatal-error').style.display = 'flex';
+    }
+
+    function reloadApp() {
+      location.reload();
+    }
     setTimeout(function() {
       if (document.getElementById('loading').textContent === 'Загрузка...') {
         document.getElementById('loading').textContent = 'Похоже, скрипты не загрузились (проверь интернет или блокировщики).';
@@ -941,7 +956,7 @@
 
   <script>
     const SUPABASE_URL = 'https://ponyiyijmamsecgrzmsa.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvbnlpeWlqbWFtc2VjZ3J6bXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzU0MTUsImV4cCI6MjEwNTc1MTQxNX0.YzG_QS07R3bqZTL8AkFB2jazUsfjcHjM6JJj1C0bnNU';
+    const SUPABASE_KEY = '1eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvbnlpeWlqbWFtc2VjZ3J6bXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNzU0MTUsImV4cCI6MjEwNTc1MTQxNX0.YzG_QS07R3bqZTL8AkFB2jazUsfjcHjM6JJj1C0bnNU';
 
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -975,7 +990,7 @@
         .maybeSingle();
 
       if (error) {
-        document.getElementById('loading').textContent = 'Ошибка загрузки: ' + error.message;
+        showFatalError();
         return;
       }
 
