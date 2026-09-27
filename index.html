@@ -436,7 +436,7 @@
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="openReviewsScreen(null, 'home-' + currentUser.role.replace('babysitter','nanny'))"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
-    <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
+    <div class="menu-item" onclick="showScreen('settings-screen')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
 
   <div id="home-nanny" class="screen">
@@ -455,7 +455,7 @@
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="openReviewsScreen(null, 'home-' + currentUser.role.replace('babysitter','nanny'))"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
-    <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
+    <div class="menu-item" onclick="showScreen('settings-screen')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
 
   <!-- ПРОФИЛЬ -->
@@ -881,6 +881,49 @@
     <div id="reviews-content"></div>
   </div>
 
+  <!-- НАСТРОЙКИ -->
+  <div id="settings-screen" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Настройки</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+    <div class="menu-item" onclick="stub('Уведомления')"><span class="emoji">🔔</span> Уведомления</div>
+    <div class="menu-item" onclick="stub('Язык (пока доступен только русский)')"><span class="emoji">🌐</span> Язык</div>
+    <div class="menu-item" onclick="showScreen('account-management')"><span class="emoji">👤</span> Управление аккаунтом</div>
+  </div>
+
+  <!-- УПРАВЛЕНИЕ АККАУНТОМ -->
+  <div id="account-management" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Управление аккаунтом</div>
+      <button class="close-btn" onclick="showScreen('settings-screen')">×</button>
+    </div>
+    <p style="color:#888;font-size:14px;">Здесь вы можете удалить свой аккаунт в Babysitters Around.</p>
+    <button class="btn-publish" style="background:#D32F2F;margin-top:20px;" onclick="showScreen('delete-confirm-1')">Удалить аккаунт</button>
+  </div>
+
+  <!-- УДАЛЕНИЕ — ШАГ 1 -->
+  <div id="delete-confirm-1" class="screen center">
+    <h1>Удалить аккаунт?</h1>
+    <p>Это действие нельзя отменить. Ваш профиль будет удалён, активные заявки закрыты. Прошедшие заявки и отзывы сохранятся в истории.</p>
+    <button class="btn-publish" style="background:#D32F2F;" onclick="showScreen('delete-confirm-2')">Продолжить</button>
+    <button class="btn-secondary" onclick="showScreen('account-management')">Отмена</button>
+  </div>
+
+  <!-- УДАЛЕНИЕ — ШАГ 2 -->
+  <div id="delete-confirm-2" class="screen center">
+    <h1>Вы уверены?</h1>
+    <p>Это последнее подтверждение. После удаления восстановить аккаунт будет нельзя.</p>
+    <button class="btn-publish" style="background:#D32F2F;" onclick="performAccountDeletion()">Да, удалить навсегда</button>
+    <button class="btn-secondary" onclick="showScreen('account-management')">Отмена</button>
+  </div>
+
+  <!-- ПРОЩАНИЕ ПОСЛЕ УДАЛЕНИЯ -->
+  <div id="deleted-goodbye" class="screen center">
+    <h1>Аккаунт удалён</h1>
+    <p>Спасибо, что были с нами. Вы можете закрыть это приложение.</p>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       document.getElementById('loading').style.display = 'flex';
@@ -1141,6 +1184,7 @@
         const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
         const badge = (!isParent && !r.nanny_seen && r.status === 'upcoming') ? '<span class="new-badge">новая</span>' : '';
         const cancelledBadge = r.status === 'cancelled' ? '<span style="color:#D32F2F;font-size:12px;font-weight:600;">Отменена</span>' : '';
+        const displayName = otherDisplayName(other);
         const needsAnswer = r.status === 'upcoming' && isPast(r.date) && !r.meeting_happened;
 
         const canReview = r.status === 'completed' && !reviewedRequestIds.has(r.id);
@@ -1163,7 +1207,7 @@
 
         return `
           <div class="request-card">
-            <div class="request-card-title">${other?.name || 'Пользователь'} ${badge}${cancelledBadge}</div>
+            <div class="request-card-title">${displayName} ${badge}${cancelledBadge}</div>
             <div class="request-card-sub">${dateFormatted}${r.time_info ? ', ' + r.time_info : ''}${r.city ? ' · ' + r.city : ''}</div>
             ${actionHtml}
           </div>
@@ -1193,7 +1237,7 @@
       const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
       let html = `
-        <div class="nfp-name-line">${other?.name || 'Пользователь'}</div>
+        <div class="nfp-name-line">${otherDisplayName(other)}</div>
         <div class="nfp-row"><b>Дата:</b> ${dateFormatted}</div>
         ${r.time_info ? `<div class="nfp-row"><b>Время:</b> ${r.time_info}</div>` : ''}
         ${r.city ? `<div class="nfp-row"><b>Город:</b> ${r.city}</div>` : ''}
@@ -1302,6 +1346,48 @@
       }
       showScreen('my-requests');
       openMyRequests();
+    }
+
+    // ==== УДАЛЕНИЕ АККАУНТА ====
+
+    function otherDisplayName(u) {
+      if (!u) return 'Пользователь';
+      if (u.is_deleted) {
+        return u.role === 'parent' ? 'Пользователь удалён' : 'Няня больше не использует Babysitters Around';
+      }
+      return u.name || 'Пользователь';
+    }
+
+    async function performAccountDeletion() {
+      const isNanny = currentUser.role === 'babysitter';
+
+      await sb.from('users').update({
+        is_deleted: true,
+        name: '',
+        avatar_url: null,
+        about: '',
+        children: ''
+      }).eq('telegram_id', telegramId);
+
+      if (isNanny) {
+        await sb.from('nanny_profiles').update({
+          is_published: false,
+          is_available: false
+        }).eq('telegram_id', telegramId);
+      }
+
+      await sb.from('requests')
+        .update({ status: 'cancelled' })
+        .eq(isNanny ? 'nanny_telegram_id' : 'parent_telegram_id', telegramId)
+        .eq('status', 'upcoming');
+
+      showScreen('deleted-goodbye');
+
+      setTimeout(() => {
+        if (window.Telegram?.WebApp?.close) {
+          Telegram.WebApp.close();
+        }
+      }, 2500);
     }
 
     // ==== ОТЗЫВЫ ====
