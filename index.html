@@ -434,7 +434,7 @@
     <div class="menu-item" onclick="openSearch()"><span class="emoji">🔎</span> Найти няню</div>
     <div class="menu-item" onclick="openMyRequests()"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
-    <div class="menu-item" onclick="openReviewsScreen()"><span class="emoji">⭐</span> Отзывы</div>
+    <div class="menu-item" onclick="openReviewsScreen(null, 'home-' + currentUser.role.replace('babysitter','nanny'))"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
@@ -453,7 +453,7 @@
     <div class="menu-item" onclick="openNannyForm()"><span class="emoji">👩‍🍼</span> Моя анкета</div>
     <div class="menu-item" onclick="openCalendar()"><span class="emoji">📅</span> Доступность</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
-    <div class="menu-item" onclick="openReviewsScreen()"><span class="emoji">⭐</span> Отзывы</div>
+    <div class="menu-item" onclick="openReviewsScreen(null, 'home-' + currentUser.role.replace('babysitter','nanny'))"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
@@ -875,8 +875,8 @@
   <!-- ОТЗЫВЫ О ВАС -->
   <div id="reviews-screen" class="screen">
     <div class="top-bar">
-      <div class="top-title">Отзывы о вас</div>
-      <button class="close-btn" onclick="goHome()">×</button>
+      <div class="top-title" id="reviews-title">Отзывы о вас</div>
+      <button class="close-btn" onclick="closeReviewsScreen()">×</button>
     </div>
     <div id="reviews-content"></div>
   </div>
@@ -1353,13 +1353,17 @@
       openMyRequests();
     }
 
-    async function openReviewsScreen() {
+    let reviewsBackScreen = 'home';
+
+    async function openReviewsScreen(targetId, backScreen) {
+      const finalTargetId = targetId || telegramId;
+      reviewsBackScreen = backScreen || 'home';
+
       const { data: myReviews, error } = await sb
         .from('reviews')
         .select('*')
-        .eq('target_telegram_id', telegramId)
+        .eq('target_telegram_id', finalTargetId)
         .order('id', { ascending: false });
-
       const container = document.getElementById('reviews-content');
 
       if (error) {
@@ -1402,7 +1406,12 @@
       }).join('');
 
       container.innerHTML = html;
+      document.getElementById('reviews-title').textContent = targetId ? 'Отзывы' : 'Отзывы о вас';
       showScreen('reviews-screen');
+    }
+
+    function closeReviewsScreen() {
+      showScreen(reviewsBackScreen);
     }
 
     // ==== ПОИСК НЯНИ (родитель) ====
@@ -1457,6 +1466,16 @@
         (availData || []).forEach(a => { availMap[a.telegram_id] = a.status; });
       }
 
+      let reviewsStatsMap = {};
+      if (ids.length > 0) {
+        const { data: allReviews } = await sb.from('reviews').select('target_telegram_id, rating').in('target_telegram_id', ids);
+        (allReviews || []).forEach(r => {
+          if (!reviewsStatsMap[r.target_telegram_id]) reviewsStatsMap[r.target_telegram_id] = { sum: 0, count: 0 };
+          reviewsStatsMap[r.target_telegram_id].sum += r.rating;
+          reviewsStatsMap[r.target_telegram_id].count += 1;
+        });
+      }
+
       const cityLower = city.toLowerCase();
 
       let results = profiles
@@ -1483,7 +1502,8 @@
         .map(p => ({
           profile: p,
           user: usersMap[p.telegram_id],
-          status: availMap[p.telegram_id] || null
+          status: availMap[p.telegram_id] || null,
+          reviewStats: reviewsStatsMap[p.telegram_id] || null
         }));
 
       renderSearchResults(results);
@@ -1497,6 +1517,11 @@
       const langs = (p.languages || '').split(',').filter(Boolean).join(', ') || '—';
       const groups = (p.age_groups || '').split(',').filter(Boolean).join(', ') || '—';
 
+      const rs = item.reviewStats;
+      const ratingHtml = rs
+        ? `<span style="color:#FFC107;">★</span> ${(rs.sum / rs.count).toFixed(1)} (${rs.count})`
+        : `<span style="color:#bbb;">Отзывов пока нет</span>`;
+
       return `
         <div class="nanny-card">
           <div class="nanny-card-top">
@@ -1504,6 +1529,7 @@
             <div>
               <div class="nanny-card-name">${u.name || 'Без имени'}${p.age ? ', ' + p.age : ''}</div>
               <div class="nanny-card-sub">${u.city || ''}</div>
+              <div class="nanny-card-sub" style="margin-top:2px;">${ratingHtml}</div>
             </div>
           </div>
           <div class="nanny-card-meta">
@@ -1639,8 +1665,38 @@
 
       html += `<div class="menu-item" onclick="openViewCalendar()" style="margin-top:18px;">📅 Открыть календарь</div>`;
 
+      const { data: nReviews } = await sb.from('reviews').select('*').eq('target_telegram_id', nId).order('id', { ascending: false });
+
       html += `<div class="nfp-section-title">Отзывы</div>`;
-      html += `<div class="nfp-row" style="color:#888;">Отзывы пока отсутствуют</div>`;
+
+      if (!nReviews || nReviews.length === 0) {
+        html += `<div class="nfp-row" style="color:#888;">Отзывы пока отсутствуют</div>`;
+      } else {
+        const avg = (nReviews.reduce((s, r) => s + r.rating, 0) / nReviews.length).toFixed(1);
+        const authorIds = [...new Set(nReviews.map(r => r.author_telegram_id))];
+        const { data: authors } = await sb.from('users').select('*').in('telegram_id', authorIds);
+        const authorMap = {};
+        (authors || []).forEach(u => { authorMap[u.telegram_id] = u; });
+
+        html += `<div class="nfp-row"><span style="color:#FFC107;">★</span> <b>${avg}</b> · ${nReviews.length} ${nReviews.length === 1 ? 'отзыв' : 'отзывов'}</div>`;
+
+        html += `<div style="max-height:260px; overflow-y:auto; margin-top:10px;">`;
+        html += nReviews.slice(0, 3).map(r => {
+          const author = authorMap[r.author_telegram_id];
+          return `
+            <div class="review-card">
+              <div class="stars-display">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+              <div class="review-author">${author?.name || 'Пользователь'}</div>
+              ${r.comment ? `<div class="review-comment">${r.comment}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+        html += `</div>`;
+
+        if (nReviews.length > 3) {
+          html += `<div class="menu-item" onclick="openReviewsScreen(${nId}, 'nanny-full-profile')" style="margin-top:10px;">Посмотреть все отзывы</div>`;
+        }
+      }
 
       document.getElementById('nfp-content').innerHTML = html;
       showScreen('nanny-full-profile');
