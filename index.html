@@ -1214,6 +1214,12 @@
       contactBtn.onclick = () => contactNannyById(otherId, other?.username);
       container.appendChild(contactBtn);
 
+      const reviewsBtn = document.createElement('button');
+      reviewsBtn.className = 'btn-secondary';
+      reviewsBtn.textContent = 'Посмотреть отзывы';
+      reviewsBtn.onclick = () => openReviewsScreen(otherId, 'request-detail');
+      container.appendChild(reviewsBtn);
+
       if (isParent && r.status === 'upcoming' && !isPast(r.date)) {
         const cancelBtn = document.createElement('button');
         cancelBtn.className = 'btn-secondary';
