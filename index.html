@@ -371,6 +371,29 @@
       border-radius: 8px;
       margin-left: 6px;
     }
+    .star-row { display: flex; gap: 6px; font-size: 32px; margin-bottom: 6px; }
+    .star { color: #ddd; cursor: pointer; }
+    .star.filled { color: #FFC107; }
+    .review-summary {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .review-summary .big-rating { font-size: 36px; font-weight: 700; color: #333; }
+    .review-summary .stars-display { color: #FFC107; font-size: 20px; margin: 4px 0; }
+    .review-card {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .review-card .stars-display { color: #FFC107; font-size: 15px; }
+    .review-card .review-author { font-weight: 600; font-size: 14px; margin-top: 4px; }
+    .review-card .review-comment { font-size: 14px; color: #555; margin-top: 4px; }
 
     .nfp-photos { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; }
     .nfp-photo {
@@ -411,7 +434,7 @@
     <div class="menu-item" onclick="openSearch()"><span class="emoji">🔎</span> Найти няню</div>
     <div class="menu-item" onclick="openMyRequests()"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
-    <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
+    <div class="menu-item" onclick="openReviewsScreen()"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
@@ -430,7 +453,7 @@
     <div class="menu-item" onclick="openNannyForm()"><span class="emoji">👩‍🍼</span> Моя анкета</div>
     <div class="menu-item" onclick="openCalendar()"><span class="emoji">📅</span> Доступность</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
-    <div class="menu-item" onclick="stub('Отзывы')"><span class="emoji">⭐</span> Отзывы</div>
+    <div class="menu-item" onclick="openReviewsScreen()"><span class="emoji">⭐</span> Отзывы</div>
     <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="stub('Настройки')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
@@ -830,6 +853,34 @@
     <button class="btn-secondary" onclick="showScreen('request-detail')">Назад</button>
   </div>
 
+  <!-- ОСТАВИТЬ ОТЗЫВ -->
+  <div id="leave-review" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Оставить отзыв</div>
+      <button class="close-btn" onclick="showScreen('my-requests')">×</button>
+    </div>
+    <div id="lr-target-name" style="font-weight:600;font-size:16px;margin-bottom:14px;"></div>
+
+    <div class="field-label">Оценка</div>
+    <div class="star-row" id="lr-stars"></div>
+
+    <div class="field-label">Комментарий <span style="font-weight:400;color:#999;">(необязательно)</span></div>
+    <textarea id="lr-comment"></textarea>
+
+    <div class="save-wrap">
+      <button class="btn-publish" onclick="submitReview()">Отправить отзыв</button>
+    </div>
+  </div>
+
+  <!-- ОТЗЫВЫ О ВАС -->
+  <div id="reviews-screen" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Отзывы о вас</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+    <div id="reviews-content"></div>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       document.getElementById('loading').style.display = 'flex';
@@ -1078,6 +1129,13 @@
       const otherMap = {};
       (otherUsers || []).forEach(u => { otherMap[u.telegram_id] = u; });
 
+      const completedIds = filtered.filter(r => r.status === 'completed').map(r => r.id);
+      let reviewedRequestIds = new Set();
+      if (completedIds.length) {
+        const { data: myReviews } = await sb.from('reviews').select('request_id').eq('author_telegram_id', telegramId).in('request_id', completedIds);
+        (myReviews || []).forEach(rv => reviewedRequestIds.add(rv.request_id));
+      }
+
       document.getElementById('mr-list').innerHTML = filtered.map(r => {
         const other = otherMap[isParent ? r.nanny_telegram_id : r.parent_telegram_id];
         const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
@@ -1085,16 +1143,23 @@
         const cancelledBadge = r.status === 'cancelled' ? '<span style="color:#D32F2F;font-size:12px;font-weight:600;">Отменена</span>' : '';
         const needsAnswer = r.status === 'upcoming' && isPast(r.date) && !r.meeting_happened;
 
-        const actionHtml = needsAnswer
-          ? `
+        const canReview = r.status === 'completed' && !reviewedRequestIds.has(r.id);
+
+        let actionHtml;
+        if (needsAnswer) {
+          actionHtml = `
             <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Встреча состоялась?</div>
             <div style="display:flex; gap:6px;">
               <button class="btn-save" style="max-width:none;padding:8px;font-size:13px;" onclick="answerMeetingFromCard(${r.id}, 'yes')">Да</button>
               <button class="btn-secondary" style="max-width:none;padding:8px;font-size:13px;" onclick="answerMeetingFromCard(${r.id}, 'no')">Нет</button>
               <button class="btn-secondary" style="max-width:none;padding:8px;font-size:13px;" onclick="answerMeetingFromCard(${r.id}, 'other')">Другое</button>
             </div>
-          `
-          : `<button class="btn-view" onclick="openRequestDetail(${r.id})">Открыть заявку</button>`;
+          `;
+        } else if (canReview) {
+          actionHtml = `<button class="btn-publish" onclick="openLeaveReview(${r.id}, ${other?.telegram_id}, '${(other?.name || 'Пользователь').replace(/'/g, '')}')">Оставить отзыв</button>`;
+        } else {
+          actionHtml = `<button class="btn-view" onclick="openRequestDetail(${r.id})">Открыть заявку</button>`;
+        }
 
         return `
           <div class="request-card">
@@ -1231,6 +1296,113 @@
       }
       showScreen('my-requests');
       openMyRequests();
+    }
+
+    // ==== ОТЗЫВЫ ====
+
+    let currentReviewRating = 0;
+    let reviewRequestId = null;
+    let reviewTargetId = null;
+
+    function renderStars(containerId, rating, clickable) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      for (let i = 1; i <= 5; i++) {
+        const span = document.createElement('span');
+        span.className = 'star' + (i <= rating ? ' filled' : '');
+        span.textContent = '★';
+        if (clickable) {
+          span.style.cursor = 'pointer';
+          span.onclick = () => { currentReviewRating = i; renderStars(containerId, i, true); };
+        }
+        container.appendChild(span);
+      }
+    }
+
+    function openLeaveReview(requestId, targetId, targetName) {
+      reviewRequestId = requestId;
+      reviewTargetId = targetId;
+      currentReviewRating = 0;
+      document.getElementById('lr-target-name').textContent = 'Отзыв для: ' + targetName;
+      document.getElementById('lr-comment').value = '';
+      renderStars('lr-stars', 0, true);
+      showScreen('leave-review');
+    }
+
+    async function submitReview() {
+      if (currentReviewRating === 0) {
+        alert('Пожалуйста, выберите оценку от 1 до 5 звёзд.');
+        return;
+      }
+
+      const { error } = await sb.from('reviews').insert({
+        request_id: reviewRequestId,
+        author_telegram_id: telegramId,
+        target_telegram_id: reviewTargetId,
+        rating: currentReviewRating,
+        comment: document.getElementById('lr-comment').value.trim()
+      });
+
+      if (error) {
+        alert('Ошибка отправки отзыва: ' + error.message);
+        return;
+      }
+
+      alert('Спасибо за отзыв! ⭐');
+      showScreen('my-requests');
+      openMyRequests();
+    }
+
+    async function openReviewsScreen() {
+      const { data: myReviews, error } = await sb
+        .from('reviews')
+        .select('*')
+        .eq('target_telegram_id', telegramId)
+        .order('id', { ascending: false });
+
+      const container = document.getElementById('reviews-content');
+
+      if (error) {
+        container.innerHTML = '<div class="no-results">Ошибка загрузки отзывов</div>';
+        showScreen('reviews-screen');
+        return;
+      }
+
+      if (!myReviews || myReviews.length === 0) {
+        container.innerHTML = '<div class="no-results">Отзывы пока отсутствуют</div>';
+        showScreen('reviews-screen');
+        return;
+      }
+
+      const avg = (myReviews.reduce((sum, r) => sum + r.rating, 0) / myReviews.length).toFixed(1);
+      const fullStars = Math.round(avg);
+
+      const authorIds = [...new Set(myReviews.map(r => r.author_telegram_id))];
+      const { data: authors } = await sb.from('users').select('*').in('telegram_id', authorIds);
+      const authorMap = {};
+      (authors || []).forEach(u => { authorMap[u.telegram_id] = u; });
+
+      let html = `
+        <div class="review-summary">
+          <div class="big-rating">${avg}</div>
+          <div class="stars-display">${'★'.repeat(fullStars)}${'☆'.repeat(5 - fullStars)}</div>
+          <div style="color:#888;font-size:14px;">${myReviews.length} ${myReviews.length === 1 ? 'отзыв' : 'отзывов'}</div>
+        </div>
+      `;
+
+      html += myReviews.map(r => {
+        const author = authorMap[r.author_telegram_id];
+        return `
+          <div class="review-card">
+            <div class="stars-display">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+            <div class="review-author">${author?.name || 'Пользователь'}</div>
+            ${r.comment ? `<div class="review-comment">${r.comment}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+      showScreen('reviews-screen');
     }
 
     // ==== ПОИСК НЯНИ (родитель) ====
