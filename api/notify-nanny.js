@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     if (city) text += `📍 ${city}\n`;
     if (workFormat) text += `🏠 ${workFormat}\n`;
     if (message) text += `\n${message}`;
-    replyMarkup = { inline_keyboard: [[{ text: 'Открыть заявку', url: appUrl }]] };
+    replyMarkup = { inline_keyboard: [[{ text: 'Открыть заявку', web_app: { url: appUrl } }]] };
   }
 
   const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
