@@ -441,7 +441,7 @@
     <div class="menu-item" onclick="openMyRequests()"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="openReviewsScreen(null, 'home-' + currentUser.role.replace('babysitter','nanny'))"><span class="emoji">⭐</span> Отзывы</div>
-    <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
+    <div class="menu-item" onclick="showScreen('support-screen')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="showScreen('settings-screen')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
 
@@ -460,7 +460,7 @@
     <div class="menu-item" onclick="openCalendar()"><span class="emoji">📅</span> Доступность</div>
     <div class="menu-item" onclick="openProfile()"><span class="emoji">👤</span> Мой профиль</div>
     <div class="menu-item" onclick="openReviewsScreen(null, 'home-' + currentUser.role.replace('babysitter','nanny'))"><span class="emoji">⭐</span> Отзывы</div>
-    <div class="menu-item" onclick="stub('Поддержать проект')"><span class="emoji">❤️</span> Поддержать проект</div>
+    <div class="menu-item" onclick="showScreen('support-screen')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="showScreen('settings-screen')"><span class="emoji">⚙️</span> Настройки</div>
   </div>
 
@@ -945,6 +945,28 @@
     <p>Спасибо, что были с нами. Вы можете закрыть это приложение.</p>
   </div>
 
+  <!-- ПОДДЕРЖАТЬ ПРОЕКТ -->
+  <div id="support-screen" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Поддержать проект</div>
+      <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+    <p style="color:#666;font-size:15px;">Babysitters Around делается с любовью. Спасибо, что хотите помочь проекту расти ❤️</p>
+
+    <div class="pill-group" id="support-amounts" style="margin-top:16px;">
+      <div class="pill" data-value="1" onclick="selectSupportAmount(this)">€1</div>
+      <div class="pill" data-value="3" onclick="selectSupportAmount(this)">€3</div>
+      <div class="pill" data-value="5" onclick="selectSupportAmount(this)">€5</div>
+      <div class="pill" data-value="10" onclick="selectSupportAmount(this)">€10</div>
+      <div class="pill" data-value="custom" onclick="selectSupportAmount(this)">Другая сумма</div>
+    </div>
+    <input type="number" id="support-custom" placeholder="Сумма в евро" style="display:none;margin-top:10px;">
+
+    <div class="save-wrap">
+      <button class="btn-publish" onclick="startSupportPayment()">Поддержать</button>
+    </div>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       showFatalError();
@@ -1376,6 +1398,35 @@
       }
       showScreen('my-requests');
       openMyRequests();
+    }
+
+    // ==== ПОДДЕРЖКА ПРОЕКТА ====
+
+    function selectSupportAmount(el) {
+      document.querySelectorAll('#support-amounts .pill').forEach(p => p.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('support-custom').style.display =
+        el.dataset.value === 'custom' ? 'block' : 'none';
+    }
+
+    function getSupportAmount() {
+      const sel = document.querySelector('#support-amounts .pill.selected');
+      if (!sel) return null;
+      if (sel.dataset.value === 'custom') {
+        const v = parseFloat(document.getElementById('support-custom').value);
+        return v > 0 ? v : null;
+      }
+      return parseFloat(sel.dataset.value);
+    }
+
+    // Точка подключения платёжной системы (сюда позже добавим провайдера)
+    function startSupportPayment() {
+      const amount = getSupportAmount();
+      if (!amount) {
+        alert('Выберите сумму поддержки.');
+        return;
+      }
+      alert('Спасибо за желание поддержать проект ❤️\nПриём платежей мы подключим совсем скоро.');
     }
 
     // ==== УДАЛЕНИЕ АККАУНТА ====
