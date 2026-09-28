@@ -841,7 +841,7 @@
   <div id="request-detail" class="screen">
     <div class="top-bar">
       <div class="top-title">Заявка</div>
-      <button class="close-btn" onclick="showScreen('my-requests')">×</button>
+      <button class="close-btn" onclick="openMyRequests()">×</button>
     </div>
     <div id="rd-content"></div>
   </div>
@@ -1011,6 +1011,7 @@
     let currentNannyProfile = null;
     let pendingAvatarUrl = null;
     let nannyPhotos = [];
+    let deletedRowExists = false;
     let calYear, calMonth;
     let availabilityMap = {};
     
@@ -1033,15 +1034,25 @@
 
       document.getElementById('loading').style.display = 'none';
 
-      if (data) {
+      if (data && !data.is_deleted) {
         currentUser = data;
         if (data.role === 'babysitter') {
           await loadNannyProfile();
         }
         showHome(data);
+        const rid = new URLSearchParams(location.search).get('r');
+        if (rid) openRequestById(parseInt(rid));
       } else {
+        deletedRowExists = !!data;
         showScreen('welcome');
       }
+    }
+
+    async function openRequestById(id) {
+      const { data: r } = await sb.from('requests').select('*').eq('id', id).maybeSingle();
+      if (!r || (r.nanny_telegram_id !== telegramId && r.parent_telegram_id !== telegramId)) return;
+      mrCurrentList = [r];
+      await openRequestDetail(id);
     }
 
     async function loadNannyProfile() {
@@ -1057,17 +1068,20 @@
     }
 
     async function selectRole(role) {
-      const { data, error } = await sb
-        .from('users')
-        .insert({
-          telegram_id: telegramId,
-          role: role,
-          name: telegramName,
-          username: telegramUsername
-        })
-        .select()
-        .single();
-
+      const fields = {
+        role: role,
+        name: telegramName,
+        username: telegramUsername,
+        is_deleted: false,
+        city: null,
+        avatar_url: null,
+        about: null,
+        children: null
+      };
+      const query = deletedRowExists
+        ? sb.from('users').update(fields).eq('telegram_id', telegramId)
+        : sb.from('users').insert({ telegram_id: telegramId, ...fields });
+      const { data, error } = await query.select().single();
       if (error) {
         alert('Ошибка сохранения: ' + error.message);
         return;
@@ -1939,7 +1953,7 @@
         status: 'upcoming'
       };
 
-      const { error } = await sb.from('requests').insert(requestData);
+      const { data: newRequest, error } = await sb.from('requests').insert(requestData).select().single();
 
       if (error) {
         alert('Ошибка отправки заявки: ' + error.message);
@@ -1969,7 +1983,7 @@
             city: requestData.city,
             workFormat: requestData.work_format,
             message: requestData.message,
-            appUrl: 'https://babysitters-around-1oh3.vercel.app/'
+            appUrl: 'https://babysitters-around-1oh3.vercel.app/?r=' + newRequest.id
           })
         });
       } catch (e) {
