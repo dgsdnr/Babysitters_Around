@@ -484,7 +484,12 @@
     <input type="text" id="f-name" placeholder="Ваше имя">
 
     <div class="field-label">Город</div>
-    <input type="text" id="f-city" placeholder="Например, Белград">
+    <div class="pill-group" id="pf-country-pills">
+      <div class="pill" data-value="Сербия" onclick="citySelectCountry('pf', this, 'Сербия')">Сербия</div>
+      <div class="pill" data-value="__other__" onclick="citySelectCountry('pf', this, '__other__')">Другая страна</div>
+    </div>
+    <div class="pill-group" id="pf-city-pills" style="margin-top:8px;"></div>
+    <input type="text" id="pf-city-other" placeholder="Введите город" style="display:none;margin-top:8px;">
 
     <div id="parent-only-fields" style="display:none;">
       <div class="field-label">Дети</div>
@@ -521,7 +526,12 @@
     <div class="field-label">Имя</div>
     <div class="readonly-field" id="nf-name-display">—</div>
     <div class="field-label">Город *</div>
-    <input type="text" id="nf-city" placeholder="Например, Белград">
+    <div class="pill-group" id="nfc-country-pills">
+      <div class="pill" data-value="Сербия" onclick="citySelectCountry('nfc', this, 'Сербия')">Сербия</div>
+      <div class="pill" data-value="__other__" onclick="citySelectCountry('nfc', this, '__other__')">Другая страна</div>
+    </div>
+    <div class="pill-group" id="nfc-city-pills" style="margin-top:8px;"></div>
+    <input type="text" id="nfc-city-other" placeholder="Введите город" style="display:none;margin-top:8px;">
 
     <div class="field-label">Возраст *</div>
     <input type="number" id="nf-age" placeholder="Например, 28">
@@ -680,7 +690,12 @@
     </div>
 
     <div class="field-label">Город *</div>
-    <input type="text" id="ps-city" placeholder="Например, Белград">
+    <div class="pill-group" id="psc-country-pills">
+      <div class="pill" data-value="Сербия" onclick="citySelectCountry('psc', this, 'Сербия')">Сербия</div>
+      <div class="pill" data-value="__other__" onclick="citySelectCountry('psc', this, '__other__')">Другая страна</div>
+    </div>
+    <div class="pill-group" id="psc-city-pills" style="margin-top:8px;"></div>
+    <input type="text" id="psc-city-other" placeholder="Введите город" style="display:none;margin-top:8px;">
 
     <div class="field-label">Дата *</div>
     <input type="date" id="ps-date">
@@ -1535,7 +1550,7 @@
     }
 
     async function runSearch() {
-      const city = document.getElementById('ps-city').value.trim();
+      const city = getCityValue('psc');
       const date = document.getElementById('ps-date').value;
       lastSearchDate = date;
       lastSearchTime = document.getElementById('ps-time').value.trim();
@@ -2080,7 +2095,7 @@
     function openProfile() {
       pendingAvatarUrl = null;
       document.getElementById('f-name').value = currentUser.name || '';
-      document.getElementById('f-city').value = currentUser.city || '';
+      setCityValue('pf', currentUser.city || '');
       document.getElementById('f-children').value = currentUser.children || '';
       document.getElementById('f-about').value = currentUser.about || '';
       document.getElementById('avatarStatus').textContent = '';
@@ -2145,7 +2160,7 @@
     async function saveProfile() {
       const updates = {
         name: document.getElementById('f-name').value.trim(),
-        city: document.getElementById('f-city').value.trim()
+        city: getCityValue('pf')
       };
 
       if (pendingAvatarUrl) {
@@ -2179,6 +2194,87 @@
 
     function toggleSimpleSwitch(id) {
       document.getElementById(id).classList.toggle('on');
+    }
+
+    const CITY_DATA = {
+      'Сербия': ['Белград', 'Нови-Сад']
+    };
+
+    function citySelectCountry(prefix, el, country) {
+      document.querySelectorAll('#' + prefix + '-country-pills .pill').forEach(p => p.classList.remove('selected'));
+      el.classList.add('selected');
+      renderCityPillsForCountry(prefix, country);
+    }
+
+    function renderCityPillsForCountry(prefix, country) {
+      const cityPillsEl = document.getElementById(prefix + '-city-pills');
+      const otherInput = document.getElementById(prefix + '-city-other');
+      otherInput.style.display = 'none';
+      otherInput.value = '';
+
+      if (country === '__other__') {
+        cityPillsEl.innerHTML = '';
+        otherInput.placeholder = 'Введите страну и город';
+        otherInput.style.display = 'block';
+        return;
+      }
+
+      const cities = CITY_DATA[country] || [];
+      cityPillsEl.innerHTML = cities.map(c =>
+        `<div class="pill" data-value="${c}" onclick="citySelectCity('${prefix}', this, '${c}')">${c}</div>`
+      ).join('') + `<div class="pill" data-value="__other__" onclick="citySelectCity('${prefix}', this, '__other__')">Другой город</div>`;
+    }
+
+    function citySelectCity(prefix, el, city) {
+      document.querySelectorAll('#' + prefix + '-city-pills .pill').forEach(p => p.classList.remove('selected'));
+      el.classList.add('selected');
+      const otherInput = document.getElementById(prefix + '-city-other');
+      if (city === '__other__') {
+        otherInput.placeholder = 'Введите город';
+        otherInput.style.display = 'block';
+        otherInput.value = '';
+      } else {
+        otherInput.style.display = 'none';
+        otherInput.value = '';
+      }
+    }
+
+    function getCityValue(prefix) {
+      const otherInput = document.getElementById(prefix + '-city-other');
+      if (otherInput.style.display === 'block' && otherInput.value.trim()) {
+        return otherInput.value.trim();
+      }
+      const selectedCity = document.querySelector('#' + prefix + '-city-pills .pill.selected');
+      if (selectedCity && selectedCity.dataset.value !== '__other__') {
+        return selectedCity.dataset.value;
+      }
+      return '';
+    }
+
+    function setCityValue(prefix, cityStr) {
+      document.querySelectorAll('#' + prefix + '-country-pills .pill').forEach(p => p.classList.remove('selected'));
+      document.getElementById(prefix + '-city-pills').innerHTML = '';
+      const otherInput = document.getElementById(prefix + '-city-other');
+      otherInput.style.display = 'none';
+      otherInput.value = '';
+
+      if (!cityStr) return;
+
+      for (const country in CITY_DATA) {
+        if (CITY_DATA[country].includes(cityStr)) {
+          const countryPill = document.querySelector(`#${prefix}-country-pills .pill[data-value="${country}"]`);
+          if (countryPill) countryPill.classList.add('selected');
+          renderCityPillsForCountry(prefix, country);
+          const cityPill = document.querySelector(`#${prefix}-city-pills .pill[data-value="${cityStr}"]`);
+          if (cityPill) cityPill.classList.add('selected');
+          return;
+        }
+      }
+
+      const otherCountryPill = document.querySelector(`#${prefix}-country-pills .pill[data-value="__other__"]`);
+      if (otherCountryPill) otherCountryPill.classList.add('selected');
+      otherInput.style.display = 'block';
+      otherInput.value = cityStr;
     }
 
     function togglePill(el) {
@@ -2281,7 +2377,7 @@
       renderNannyPhotos();
       document.getElementById('nf-photo-status').textContent = '';
       document.getElementById('nf-name-display').textContent = currentUser.name || 'Не указано (заполните в «Моём профиле»)';
-      document.getElementById('nf-city').value = currentUser.city || '';
+      setCityValue('nfc', currentUser.city || '');
       document.getElementById('nf-age').value = p?.age || '';
       document.getElementById('nf-price').value = p?.min_price || '';
       document.getElementById('nf-about').value = p?.about || '';
@@ -2351,7 +2447,7 @@
     }
 
     async function saveNannyDraft() {
-      const cityValue = document.getElementById('nf-city').value.trim();
+      const cityValue = getCityValue('nfc');
       await syncCityToProfile(cityValue);
       const fields = collectNannyFormData();
       const { data, error } = await upsertNannyProfile(fields);
@@ -2366,7 +2462,7 @@
     }
 
     async function publishNannyProfile() {
-      const cityValue = document.getElementById('nf-city').value.trim();
+      const cityValue = getCityValue('nfc');
       await syncCityToProfile(cityValue);
       const fields = collectNannyFormData();
 
