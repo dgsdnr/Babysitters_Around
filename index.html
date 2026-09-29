@@ -1012,6 +1012,7 @@
     const telegramName = tgUser?.first_name || '';
 
     let currentUser = null;
+    let identityVerified = false;
     let currentNannyProfile = null;
     let pendingAvatarUrl = null;
     let nannyPhotos = [];
@@ -1025,6 +1026,23 @@
         return;
       }
 
+      const rawInitData = window.Telegram?.WebApp?.initData;
+      try {
+        const verifyRes = await fetch('/api/verify-init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData: rawInitData })
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyData.ok || verifyData.telegramId !== telegramId) {
+          document.getElementById('loading').textContent = 'Не удалось подтвердить личность. Откройте приложение через бота ещё раз.';
+          return;
+        }
+        identityVerified = true;
+      } catch (e) {
+        document.getElementById('loading').textContent = 'Ошибка проверки. Попробуйте ещё раз.';
+        return;
+      }
       const { data, error } = await sb
         .from('users')
         .select('*')
