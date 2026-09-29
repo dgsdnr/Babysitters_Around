@@ -1016,6 +1016,17 @@
     let identityVerified = false;
     let telegramInitData = null;
 
+    async function secureRead(type, params) {
+      const res = await fetch('/api/secure-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: telegramInitData, type, params })
+      });
+      const result = await res.json();
+      if (!result.ok) throw new Error(result.error || 'Ошибка чтения');
+      return result.data;
+    }
+
     async function secureWrite(table, action, values, matchField, matchValue) {
       const res = await fetch('/api/secure-write', {
         method: 'POST',
@@ -1057,13 +1068,10 @@
         document.getElementById('loading').textContent = 'Ошибка проверки. Попробуйте ещё раз.';
         return;
       }
-      const { data, error } = await sb
-        .from('users')
-        .select('*')
-        .eq('telegram_id', telegramId)
-        .maybeSingle();
-
-      if (error) {
+      let data;
+      try {
+        data = await secureRead('own-user');
+      } catch (e) {
         showFatalError();
         return;
       }
@@ -1092,17 +1100,12 @@
     }
 
     async function loadNannyProfile() {
-      const { data, error } = await sb
-        .from('nanny_profiles')
-        .select('*')
-        .eq('telegram_id', telegramId)
-        .maybeSingle();
-
-      if (!error) {
-        currentNannyProfile = data;
+      try {
+        currentNannyProfile = await secureRead('own-nanny-profile');
+      } catch (e) {
+        currentNannyProfile = null;
       }
     }
-
     async function selectRole(role) {
       const fields = {
         role: role,
@@ -1240,15 +1243,11 @@
 
     async function loadAndRenderRequests() {
       const isParent = currentUser.role === 'parent';
-      const column = isParent ? 'parent_telegram_id' : 'nanny_telegram_id';
 
-      const { data, error } = await sb
-        .from('requests')
-        .select('*')
-        .eq(column, telegramId)
-        .order('date', { ascending: true });
-
-      if (error) {
+      let data;
+      try {
+        data = await secureRead('my-requests');
+      } catch (e) {
         document.getElementById('mr-list').innerHTML = '<div class="no-results">Ошибка загрузки заявок</div>';
         return;
       }
@@ -1278,7 +1277,7 @@
       }
 
       const otherIds = [...new Set(filtered.map(r => isParent ? r.nanny_telegram_id : r.parent_telegram_id))];
-      const { data: otherUsers } = await sb.from('users').select('*').in('telegram_id', otherIds);
+      const otherUsers = await secureRead('public-users', { ids: otherIds });
       const otherMap = {};
       (otherUsers || []).forEach(u => { otherMap[u.telegram_id] = u; });
 
@@ -1340,7 +1339,8 @@
 
       const isParent = currentUser.role === 'parent';
       const otherId = isParent ? r.nanny_telegram_id : r.parent_telegram_id;
-      const { data: other } = await sb.from('users').select('*').eq('telegram_id', otherId).single();
+      const otherUsers = await secureRead('public-users', { ids: [otherId] });
+      const other = otherUsers[0];
 
       const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -1642,7 +1642,7 @@
       const fullStars = Math.round(avg);
 
       const authorIds = [...new Set(myReviews.map(r => r.author_telegram_id))];
-      const { data: authors } = await sb.from('users').select('*').in('telegram_id', authorIds);
+      const authors = await secureRead('public-users', { ids: authorIds });
       const authorMap = {};
       (authors || []).forEach(u => { authorMap[u.telegram_id] = u; });
 
@@ -1719,7 +1719,7 @@
       let availMap = {};
 
       if (ids.length > 0) {
-        const { data: usersData } = await sb.from('users').select('*').in('telegram_id', ids);
+        const usersData = await secureRead('public-users', { ids });
         (usersData || []).forEach(u => { usersMap[u.telegram_id] = u; });
 
         const { data: availData } = await sb.from('availability').select('*').eq('date', date).in('telegram_id', ids);
@@ -1854,7 +1854,8 @@
       viewingNannyId = nId;
 
       const { data: p } = await sb.from('nanny_profiles').select('*').eq('telegram_id', nId).single();
-      const { data: u } = await sb.from('users').select('*').eq('telegram_id', nId).single();
+      const uArr = await secureRead('public-users', { ids: [nId] });
+      const u = uArr[0];
       viewingNannyUser = u;
 
       const photos = (p.photos || '').split(',').filter(Boolean);
@@ -1934,10 +1935,9 @@
       } else {
         const avg = (nReviews.reduce((s, r) => s + r.rating, 0) / nReviews.length).toFixed(1);
         const authorIds = [...new Set(nReviews.map(r => r.author_telegram_id))];
-        const { data: authors } = await sb.from('users').select('*').in('telegram_id', authorIds);
-        const authorMap = {};
-        (authors || []).forEach(u => { authorMap[u.telegram_id] = u; });
-
+      const authors = await secureRead('public-users', { ids: authorIds });
+      const authorMap = {};
+      (authors || []).forEach(u => { authorMap[u.telegram_id] = u; });
         html += `<div class="nfp-row"><span style="color:#FFC107;">★</span> <b>${avg}</b> · ${nReviews.length} ${nReviews.length === 1 ? 'отзыв' : 'отзывов'}</div>`;
 
         html += `<div style="max-height:260px; overflow-y:auto; margin-top:10px;">`;
@@ -1969,8 +1969,8 @@
 
     async function startRequestFromCard(nId) {
       viewingNannyId = nId;
-      const { data: u } = await sb.from('users').select('*').eq('telegram_id', nId).single();
-      viewingNannyUser = u;
+      const uArr = await secureRead('public-users', { ids: [nId] });
+      viewingNannyUser = uArr[0];
       requestOrigin = 'search-results';
       openCreateRequest();
     }
@@ -1989,8 +1989,8 @@
     async function contactNannyById(nId, usernameParam) {
       let username = usernameParam;
       if (!username) {
-        const { data } = await sb.from('users').select('username').eq('telegram_id', nId).single();
-        username = data?.username;
+        const arr = await secureRead('public-users', { ids: [nId] });
+        username = arr[0]?.username;
       }
 
       if (!username) {
