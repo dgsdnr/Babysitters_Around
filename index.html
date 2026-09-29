@@ -822,6 +822,7 @@
     <h1>Заявка отправлена няне ❤️</h1>
     <p>Теперь вы можете написать няне лично в Telegram.</p>
     <button class="btn-contact" onclick="openSentNannyChat()">Написать няне в Telegram</button>
+    <button class="btn-secondary" onclick="showScreen('search-results')">Продолжить поиск</button>
     <div class="hint" id="chat-opened-hint" style="display:none; max-width:320px; text-align:left;">
       Чат с няней открылся у вас поверх этого приложения — сверните или закройте Mini App, чтобы его увидеть.
     </div>
@@ -1281,12 +1282,8 @@
       const otherMap = {};
       (otherUsers || []).forEach(u => { otherMap[u.telegram_id] = u; });
 
-      const completedIds = filtered.filter(r => r.status === 'completed').map(r => r.id);
-      let reviewedRequestIds = new Set();
-      if (completedIds.length) {
-        const { data: myReviews } = await sb.from('reviews').select('request_id').eq('author_telegram_id', telegramId).in('request_id', completedIds);
-        (myReviews || []).forEach(rv => reviewedRequestIds.add(rv.request_id));
-      }
+      const { data: myAllReviews } = await sb.from('reviews').select('target_telegram_id').eq('author_telegram_id', telegramId);
+      const reviewedTargetIds = new Set((myAllReviews || []).map(rv => rv.target_telegram_id));
 
       document.getElementById('mr-list').innerHTML = filtered.map(r => {
         const other = otherMap[isParent ? r.nanny_telegram_id : r.parent_telegram_id];
@@ -1296,7 +1293,7 @@
         const displayName = otherDisplayName(other);
         const needsAnswer = r.status === 'upcoming' && isPast(r.date) && !r.meeting_happened;
 
-        const canReview = r.status === 'completed' && !reviewedRequestIds.has(r.id);
+        const canReview = r.status === 'completed' && !reviewedTargetIds.has(other?.telegram_id);
 
         let actionHtml;
         if (needsAnswer) {
@@ -1443,13 +1440,30 @@
       }
 
       if (type === 'yes') {
-        alert('Спасибо! Теперь вы можете оставить отзыв (раздел «Отзывы» скоро будет готов).');
+        const { data: r } = await sb.from('requests').select('*').eq('id', selectedRequestId).single();
+        const otherId = currentUser.role === 'parent' ? r.nanny_telegram_id : r.parent_telegram_id;
+
+        const { data: existingReview } = await sb
+          .from('reviews')
+          .select('id')
+          .eq('author_telegram_id', telegramId)
+          .eq('target_telegram_id', otherId)
+          .maybeSingle();
+
+        if (existingReview) {
+          alert('Спасибо! Вы уже оставляли отзыв этому пользователю ранее — повторный отзыв не нужен.');
+          showScreen('my-requests');
+          openMyRequests();
+        } else {
+          const { data: otherUser } = await sb.from('users').select('name').eq('telegram_id', otherId).single();
+          openLeaveReview(selectedRequestId, otherId, otherUser?.name || 'Пользователь');
+        }
+      } else {
+        showScreen('my-requests');
+        openMyRequests();
       }
-
-      showScreen('my-requests');
-      openMyRequests();
     }
-
+    
     async function confirmCancelRequest() {
       try {
         await secureWrite('requests', 'update', { status: 'cancelled' }, 'id', selectedRequestId);
@@ -2192,7 +2206,7 @@
           await secureWrite('availability', 'insert', { telegram_id: telegramId, date: dateStr, status: next });
           availabilityMap[dateStr] = next;
         } else {
-          await secureWrite('availability', 'update', { status: next }, 'telegram_id', telegramId);
+          await secureWrite('availability', 'update', { status: next, date: dateStr }, 'telegram_id', telegramId);
           availabilityMap[dateStr] = next;
         }
       } catch (e) {
