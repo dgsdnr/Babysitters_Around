@@ -455,6 +455,7 @@
       </div>
       <div class="switch" id="availSwitch" onclick="toggleAvailable()"></div>
     </div>
+    <div id="avail-off-hint"></div>
     <div class="menu-item" onclick="openMyRequests()"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openNannyForm()"><span class="emoji">👩‍🍼</span> Моя анкета</div>
     <div class="menu-item" onclick="openCalendar()"><span class="emoji">📅</span> Доступность</div>
@@ -1000,6 +1001,9 @@
     if (window.Telegram && window.Telegram.WebApp) {
       Telegram.WebApp.ready();
       Telegram.WebApp.expand();
+      Telegram.WebApp.BackButton.onClick(() => {
+        goHome();
+      });
     }
 
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
@@ -1094,10 +1098,20 @@
       showHome(data);
     }
 
+    const HOME_SCREENS = ['welcome', 'home-parent', 'home-nanny'];
+
     function showScreen(id) {
       document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
       const el = document.getElementById(id);
       el.style.display = (id === 'welcome') ? 'flex' : 'block';
+
+      if (window.Telegram?.WebApp?.BackButton) {
+        if (HOME_SCREENS.includes(id)) {
+          Telegram.WebApp.BackButton.hide();
+        } else {
+          Telegram.WebApp.BackButton.show();
+        }
+      }
     }
 
     function showHome(user) {
@@ -1124,8 +1138,14 @@
       el.classList.toggle('on', !!isAvailable);
       el.classList.toggle('disabled', !published);
       label.textContent = isAvailable ? 'Да' : 'Нет';
-    }
 
+      const hintEl = document.getElementById('avail-off-hint');
+      if (!isAvailable && published) {
+        hintEl.innerHTML = '<div class="hint">Вы временно не будете отображаться в результатах поиска. Уже созданные заявки не изменятся. Анкета при этом не удаляется.</div>';
+      } else {
+        hintEl.innerHTML = '';
+      }
+    }
     function goHome() {
       showHome(currentUser);
     }
