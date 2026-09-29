@@ -1516,25 +1516,33 @@
     async function performAccountDeletion() {
       const isNanny = currentUser.role === 'babysitter';
 
-      await sb.from('users').update({
-        is_deleted: true,
-        name: '',
-        avatar_url: null,
-        about: '',
-        children: ''
-      }).eq('telegram_id', telegramId);
+      try {
+        await secureWrite('users', 'update', {
+          is_deleted: true,
+          name: '',
+          avatar_url: null,
+          about: '',
+          children: ''
+        }, 'telegram_id', telegramId);
 
-      if (isNanny) {
-        await sb.from('nanny_profiles').update({
-          is_published: false,
-          is_available: false
-        }).eq('telegram_id', telegramId);
+        if (isNanny) {
+          await secureWrite('nanny_profiles', 'update', {
+            is_published: false,
+            is_available: false
+          }, 'telegram_id', telegramId);
+        }
+
+        // requests не входит в защищённый список "владелец = telegram_id",
+        // поэтому эту часть выполняем через отдельный безопасный маршрут ниже
+        await fetch('/api/cancel-my-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData: telegramInitData, asNanny: isNanny })
+        });
+      } catch (e) {
+        alert('Ошибка удаления: ' + e.message);
+        return;
       }
-
-      await sb.from('requests')
-        .update({ status: 'cancelled' })
-        .eq(isNanny ? 'nanny_telegram_id' : 'parent_telegram_id', telegramId)
-        .eq('status', 'upcoming');
 
       showScreen('deleted-goodbye');
 
