@@ -91,6 +91,9 @@ export default async function handler(req, res) {
     }
     method = 'PATCH';
     url += `?${matchField}=eq.${matchValue}`;
+    if (table === 'availability' && values.date) {
+      url += `&date=eq.${values.date}`;
+    }
     body = JSON.stringify(values);
   } else if (action === 'delete') {
     if (table !== 'availability') {
