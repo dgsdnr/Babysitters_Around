@@ -96,7 +96,7 @@ export default async function handler(req, res) {
     }
     body = JSON.stringify(values);
   } else if (action === 'delete') {
-    if (table !== 'availability') {
+    if (table !== 'availability' && table !== 'nanny_profiles') {
       return res.status(403).json({ ok: false, error: 'Delete not allowed for this table' });
     }
     if (!matchField || matchValue === undefined) {
