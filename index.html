@@ -1013,6 +1013,18 @@
 
     let currentUser = null;
     let identityVerified = false;
+    let telegramInitData = null;
+
+    async function secureWrite(table, action, values, matchField, matchValue) {
+      const res = await fetch('/api/secure-write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: telegramInitData, table, action, values, matchField, matchValue })
+      });
+      const result = await res.json();
+      if (!result.ok) throw new Error(result.error || 'Ошибка записи');
+      return result.data;
+    }
     let currentNannyProfile = null;
     let pendingAvatarUrl = null;
     let nannyPhotos = [];
@@ -1039,6 +1051,7 @@
           return;
         }
         identityVerified = true;
+        telegramInitData = rawInitData;
       } catch (e) {
         document.getElementById('loading').textContent = 'Ошибка проверки. Попробуйте ещё раз.';
         return;
@@ -1178,21 +1191,13 @@
         return;
       }
       const newValue = !currentNannyProfile.is_available;
-      const { data, error } = await sb
-        .from('nanny_profiles')
-        .update({ is_available: newValue })
-        .eq('telegram_id', telegramId)
-        .select()
-        .single();
-
-      if (error) {
-        alert('Ошибка: ' + error.message);
-        return;
+      try {
+        currentNannyProfile = await secureWrite('nanny_profiles', 'update', { is_available: newValue }, 'telegram_id', telegramId);
+        updateAvailSwitchUI();
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
       }
-      currentNannyProfile = data;
-      updateAvailSwitchUI();
     }
-
     // ==== МОИ ЗАЯВКИ ====
 
     let mrCurrentTab = null;
@@ -2275,24 +2280,16 @@
         updates.about = document.getElementById('f-about').value.trim();
       }
 
-      const { data, error } = await sb
-        .from('users')
-        .update(updates)
-        .eq('telegram_id', telegramId)
-        .select()
-        .single();
-
-      if (error) {
-        alert('Ошибка сохранения: ' + error.message);
-        return;
+      try {
+        const data = await secureWrite('users', 'update', updates, 'telegram_id', telegramId);
+        currentUser = data;
+        pendingAvatarUrl = null;
+        alert('Профиль сохранён ✅');
+        showHome(currentUser);
+      } catch (e) {
+        alert('Ошибка сохранения: ' + e.message);
       }
-
-      currentUser = data;
-      pendingAvatarUrl = null;
-      alert('Профиль сохранён ✅');
-      showHome(currentUser);
     }
-
     // ==== АНКЕТА НЯНИ ====
 
     function toggleSimpleSwitch(id) {
@@ -2446,13 +2443,11 @@
 
     async function syncCityToProfile(cityValue) {
       if (cityValue && cityValue !== currentUser.city) {
-        const { data, error } = await sb
-          .from('users')
-          .update({ city: cityValue })
-          .eq('telegram_id', telegramId)
-          .select()
-          .single();
-        if (!error) currentUser = data;
+        try {
+          currentUser = await secureWrite('users', 'update', { city: cityValue }, 'telegram_id', telegramId);
+        } catch (e) {
+          // не блокируем сохранение анкеты, если синхронизация города не удалась
+        }
       }
     }
 
@@ -2531,21 +2526,16 @@
     }
 
     async function upsertNannyProfile(fields) {
-      if (currentNannyProfile) {
-        const { data, error } = await sb
-          .from('nanny_profiles')
-          .update(fields)
-          .eq('telegram_id', telegramId)
-          .select()
-          .single();
-        return { data, error };
-      } else {
-        const { data, error } = await sb
-          .from('nanny_profiles')
-          .insert({ telegram_id: telegramId, ...fields })
-          .select()
-          .single();
-        return { data, error };
+      try {
+        let data;
+        if (currentNannyProfile) {
+          data = await secureWrite('nanny_profiles', 'update', fields, 'telegram_id', telegramId);
+        } else {
+          data = await secureWrite('nanny_profiles', 'insert', { telegram_id: telegramId, ...fields });
+        }
+        return { data, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
       }
     }
 
