@@ -1440,7 +1440,7 @@
       }
 
       if (type === 'yes') {
-        const { data: r } = await sb.from('requests').select('*').eq('id', selectedRequestId).single();
+        const r = await secureRead('request-detail', { id: selectedRequestId });
         const otherId = currentUser.role === 'parent' ? r.nanny_telegram_id : r.parent_telegram_id;
 
         const { data: existingReview } = await sb
@@ -1455,8 +1455,8 @@
           showScreen('my-requests');
           openMyRequests();
         } else {
-          const { data: otherUser } = await sb.from('users').select('name').eq('telegram_id', otherId).single();
-          openLeaveReview(selectedRequestId, otherId, otherUser?.name || 'Пользователь');
+          const otherArr = await secureRead('public-users', { ids: [otherId] });
+          openLeaveReview(selectedRequestId, otherId, otherArr[0]?.name || 'Пользователь');
         }
       } else {
         showScreen('my-requests');
