@@ -1335,8 +1335,10 @@
       if (!r) return;
 
       if (currentUser.role === 'babysitter' && !r.nanny_seen) {
-        await sb.from('requests').update({ nanny_seen: true }).eq('id', id);
-        r.nanny_seen = true;
+        try {
+          await secureWrite('requests', 'update', { nanny_seen: true }, 'id', id);
+          r.nanny_seen = true;
+        } catch (e) { /* не критично */ }
       }
 
       const isParent = currentUser.role === 'parent';
@@ -1416,9 +1418,10 @@
         updates.message = (document.getElementById('meeting-other-text').value.trim() || '') + '\n\n[Ответ «Другое» на вопрос о встрече]';
       }
 
-      const { error } = await sb.from('requests').update(updates).eq('id', selectedRequestId);
-      if (error) {
-        alert('Ошибка: ' + error.message);
+      try {
+        await secureWrite('requests', 'update', updates, 'id', selectedRequestId);
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
         return;
       }
 
@@ -1448,13 +1451,13 @@
     }
 
     async function confirmCancelRequest() {
-      const { error } = await sb.from('requests').update({ status: 'cancelled' }).eq('id', selectedRequestId);
-      if (error) {
-        alert('Ошибка: ' + error.message);
-        return;
+      try {
+        await secureWrite('requests', 'update', { status: 'cancelled' }, 'id', selectedRequestId);
+        showScreen('my-requests');
+        openMyRequests();
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
       }
-      showScreen('my-requests');
-      openMyRequests();
     }
 
     // ==== ПОДДЕРЖКА ПРОЕКТА ====
@@ -1565,16 +1568,16 @@
         return;
       }
 
-      const { error } = await sb.from('reviews').insert({
-        request_id: reviewRequestId,
-        author_telegram_id: telegramId,
-        target_telegram_id: reviewTargetId,
-        rating: currentReviewRating,
-        comment: document.getElementById('lr-comment').value.trim()
-      });
-
-      if (error) {
-        alert('Ошибка отправки отзыва: ' + error.message);
+      try {
+        await secureWrite('reviews', 'insert', {
+          request_id: reviewRequestId,
+          author_telegram_id: telegramId,
+          target_telegram_id: reviewTargetId,
+          rating: currentReviewRating,
+          comment: document.getElementById('lr-comment').value.trim()
+        });
+      } catch (e) {
+        alert('Ошибка отправки отзыва: ' + e.message);
         return;
       }
 
@@ -1996,10 +1999,11 @@
         status: 'upcoming'
       };
 
-      const { data: newRequest, error } = await sb.from('requests').insert(requestData).select().single();
-
-      if (error) {
-        alert('Ошибка отправки заявки: ' + error.message);
+      let newRequest;
+      try {
+        newRequest = await secureWrite('requests', 'insert', requestData);
+      } catch (e) {
+        alert('Ошибка отправки заявки: ' + e.message);
         return;
       }
 
@@ -2008,8 +2012,9 @@
       if (!currentUser.city && requestData.city) profileUpdates.city = requestData.city;
       if (!currentUser.children && requestData.child_info) profileUpdates.children = requestData.child_info;
       if (Object.keys(profileUpdates).length) {
-        const { data } = await sb.from('users').update(profileUpdates).eq('telegram_id', telegramId).select().single();
-        if (data) currentUser = data;
+        try {
+          currentUser = await secureWrite('users', 'update', profileUpdates, 'telegram_id', telegramId);
+        } catch (e) { /* не критично, если не сохранилось */ }
       }
 
       // уведомляем няню через бота
@@ -2171,28 +2176,28 @@
       const nextIndex = (order.indexOf(current) + 1) % order.length;
       const next = order[nextIndex];
 
-      if (next === null) {
-        const { error } = await sb
-          .from('availability')
-          .delete()
-          .eq('telegram_id', telegramId)
-          .eq('date', dateStr);
-        if (error) { alert('Ошибка: ' + error.message); return; }
-        delete availabilityMap[dateStr];
-      } else if (current === null) {
-        const { error } = await sb
-          .from('availability')
-          .insert({ telegram_id: telegramId, date: dateStr, status: next });
-        if (error) { alert('Ошибка: ' + error.message); return; }
-        availabilityMap[dateStr] = next;
-      } else {
-        const { error } = await sb
-          .from('availability')
-          .update({ status: next })
-          .eq('telegram_id', telegramId)
-          .eq('date', dateStr);
-        if (error) { alert('Ошибка: ' + error.message); return; }
-        availabilityMap[dateStr] = next;
+      try {
+        if (next === null) {
+          await fetch('/api/secure-write', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              initData: telegramInitData, table: 'availability', action: 'delete',
+              matchField: 'telegram_id', matchValue: telegramId,
+              extraMatchField: 'date', extraMatchValue: dateStr
+            })
+          }).then(r => r.json()).then(res => { if (!res.ok) throw new Error(res.error); });
+          delete availabilityMap[dateStr];
+        } else if (current === null) {
+          await secureWrite('availability', 'insert', { telegram_id: telegramId, date: dateStr, status: next });
+          availabilityMap[dateStr] = next;
+        } else {
+          await secureWrite('availability', 'update', { status: next }, 'telegram_id', telegramId);
+          availabilityMap[dateStr] = next;
+        }
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+        return;
       }
 
       renderCalendar();
