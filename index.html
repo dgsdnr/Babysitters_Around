@@ -1114,20 +1114,20 @@
         about: null,
         children: null
       };
-      const query = deletedRowExists
-        ? sb.from('users').update(fields).eq('telegram_id', telegramId)
-        : sb.from('users').insert({ telegram_id: telegramId, ...fields });
-      const { data, error } = await query.select().single();
-      if (error) {
-        alert('Ошибка сохранения: ' + error.message);
-        return;
-      }
 
-      currentUser = data;
-      if (data.role === 'babysitter') {
-        await loadNannyProfile();
+      try {
+        const data = deletedRowExists
+          ? await secureWrite('users', 'update', fields, 'telegram_id', telegramId)
+          : await secureWrite('users', 'insert', { telegram_id: telegramId, ...fields });
+
+        currentUser = data;
+        if (data.role === 'babysitter') {
+          await loadNannyProfile();
+        }
+        showHome(data);
+      } catch (e) {
+        alert('Ошибка сохранения: ' + e.message);
       }
-      showHome(data);
     }
 
     const HOME_SCREENS = ['welcome', 'home-parent', 'home-nanny'];
