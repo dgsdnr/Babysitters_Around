@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Babysitters Around</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -427,11 +428,14 @@
     <button class="btn-publish" onclick="reloadApp()">Перезагрузить приложение</button>
   </div>
 
-  <div id="welcome" class="screen center">
-    <h1>Babysitters Around 👶</h1>
-    <p>Находите нянь рядом с вами или предлагайте свои услуги</p>
-    <button class="btn-parent" onclick="selectRole('parent')">Я родитель</button>
-    <button class="btn-nanny" onclick="selectRole('babysitter')">Я няня</button>
+  <div id="welcome" class="screen" style="display:none; flex-direction:column; align-items:center; justify-content:flex-start; padding:0;">
+    <img src="https://raw.githubusercontent.com/dgsdnr/Babysitters_Around/525aa5b2f717a41fc4b12230594f4a7c643773a0/images/IMG_20261001_104116_756.jpg" style="width:100%; max-width:380px; display:block;">
+    <div style="padding:0 24px; text-align:center; width:100%; box-sizing:border-box; margin-top:-10px;">
+      <div style="font-family:'Baloo 2',sans-serif; font-weight:700; font-size:22px; color:#3A2E22; margin-bottom:4px;">Babysitters Around</div>
+      <p style="margin-bottom:24px;">Находите нянь рядом с вами или предлагайте свои услуги</p>
+      <button class="btn-parent" onclick="selectRole('parent')">Я родитель</button>
+      <button class="btn-nanny" onclick="selectRole('babysitter')">Я няня</button>
+    </div>
   </div>
 
   <div id="home-parent" class="screen">
