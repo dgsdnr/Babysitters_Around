@@ -7,11 +7,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        body {
+      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
       margin: 0;
-      background: #f5f5f5;
-      color: #222;
+      background: #FBF1E4;
+      color: #3A2E22;
     }
     .screen { display: none; padding: 20px; min-height: 100vh; }
     .center {
@@ -25,35 +25,39 @@
     }
     h1 { color: #333; font-size: 22px; }
     p { color: #666; }
-    button {
+        button {
       width: 100%;
       max-width: 320px;
       padding: 16px;
       margin: 8px 0;
       border: none;
-      border-radius: 12px;
+      border-radius: 20px;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
     }
-    .btn-parent { background: #4A90D9; color: white; }
-    .btn-nanny { background: #E8887A; color: white; }
-    .btn-save { background: #4CAF50; color: white; }
-    .btn-publish { background: #E8887A; color: white; }
-    .btn-secondary { background: #eee; color: #333; }
+    .btn-parent { background: #2F6FA8; color: #FBF1E4; font-family: 'Baloo 2', sans-serif; font-weight: 600; }
+    .btn-nanny { background: #D9654F; color: #FBF1E4; font-family: 'Baloo 2', sans-serif; font-weight: 600; }
+    .btn-save { background: #7CAD6B; color: #FBF1E4; font-family: 'Baloo 2', sans-serif; font-weight: 600; }
+    .btn-publish { background: #D9654F; color: #FBF1E4; font-family: 'Baloo 2', sans-serif; font-weight: 600; }
+    .btn-secondary { background: #F0E4D2; color: #5C4A36; font-family: 'Baloo 2', sans-serif; font-weight: 600; }
+    .btn-contact { background: #2F6FA8; color: #FBF1E4; font-family: 'Baloo 2', sans-serif; font-weight: 600; }
+    .btn-view { background: #F0E4D2; color: #5C4A36; font-family: 'Baloo 2', sans-serif; font-weight: 600; }
     #loading { color: #999; word-break: break-word; }
     
-    .menu-item {
+        .menu-item {
       display: flex;
       align-items: center;
       gap: 14px;
-      background: white;
+      background: #FFFDF9;
       padding: 16px;
-      border-radius: 14px;
+      border-radius: 20px;
       margin-bottom: 10px;
       font-size: 16px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      box-shadow: 0 2px 8px rgba(90, 60, 30, 0.07);
     }
     .menu-item .emoji { font-size: 22px; }
     .top-bar {
@@ -62,7 +66,7 @@
       justify-content: space-between;
       margin-bottom: 20px;
     }
-    .top-title { font-size: 20px; font-weight: 700; }
+        .top-title { font-size: 20px; font-weight: 700; font-family: 'Baloo 2', sans-serif; color: #3A2E22; }
     .close-btn {
       font-size: 22px;
       color: #888;
