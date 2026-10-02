@@ -975,17 +975,29 @@
     </div>
     <p style="color:#666;font-size:15px;">Babysitters Around делается с любовью. Спасибо, что хотите помочь проекту расти ❤️</p>
 
-    <div class="pill-group" id="support-amounts" style="margin-top:16px;">
-      <div class="pill" data-value="1" onclick="selectSupportAmount(this)">€1</div>
-      <div class="pill" data-value="3" onclick="selectSupportAmount(this)">€3</div>
-      <div class="pill" data-value="5" onclick="selectSupportAmount(this)">€5</div>
-      <div class="pill" data-value="10" onclick="selectSupportAmount(this)">€10</div>
+    <div class="field-label">Способ оплаты</div>
+    <div class="pill-group" id="support-methods" style="margin-bottom:16px;">
+      <div class="pill selected" data-value="stars" onclick="selectSupportMethod(this)">⭐ Telegram Stars</div>
+      <div class="pill" data-value="crypto" onclick="selectSupportMethod(this)">₿ Крипта</div>
+    </div>
+
+    <div id="support-amounts-stars" class="pill-group">
+      <div class="pill" data-value="50" onclick="selectSupportAmount(this)">⭐ 50</div>
+      <div class="pill" data-value="150" onclick="selectSupportAmount(this)">⭐ 150</div>
+      <div class="pill" data-value="250" onclick="selectSupportAmount(this)">⭐ 250</div>
+      <div class="pill" data-value="500" onclick="selectSupportAmount(this)">⭐ 500</div>
       <div class="pill" data-value="custom" onclick="selectSupportAmount(this)">Другая сумма</div>
     </div>
-    <input type="number" id="support-custom" placeholder="Сумма в евро" style="display:none;margin-top:10px;">
+    <input type="number" id="support-custom" placeholder="Сумма в Stars" style="display:none;margin-top:10px;">
+
+    <div id="support-crypto-block" style="display:none;">
+      <p style="font-size:14px;color:#666;">Переведите любую сумму в USDT (сеть TRC20) на адрес ниже, затем нажмите «Я отправил(а) перевод» — это поможет нам сказать спасибо лично.</p>
+      <div class="readonly-field" id="crypto-address-display" style="word-break:break-all;"></div>
+      <button class="btn-secondary" onclick="copyCryptoAddress()">Скопировать адрес</button>
+    </div>
 
     <div class="save-wrap">
-      <button class="btn-publish" onclick="startSupportPayment()">Поддержать</button>
+      <button class="btn-publish" id="support-action-btn" onclick="startSupportPayment()">Поддержать</button>
     </div>
   </div>
 
