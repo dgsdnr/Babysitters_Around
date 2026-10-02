@@ -109,6 +109,15 @@
       transition: left 0.2s;
     }
     .switch.on::after { left: 22px; }
+    @keyframes pinWiggle {
+      0%   { transform: scale(1) rotate(0deg); }
+      25%  { transform: scale(1.12) rotate(-6deg); }
+      50%  { transform: scale(1.05) rotate(5deg); }
+      75%  { transform: scale(1.1) rotate(-3deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    .pin-animate { animation: pinWiggle 0.6s ease; }
+
     .hint {
       background: #FFF8E1;
       color: #7a6a00;
@@ -452,7 +461,7 @@
     <div class="menu-item" onclick="showScreen('support-screen')"><span class="emoji">❤️</span> Поддержать проект</div>
     <div class="menu-item" onclick="showScreen('settings-screen')"><span class="emoji">⚙️</span> Настройки</div>
     <div style="display:flex; justify-content:center; margin-top:18px;">
-      <img src="https://raw.githubusercontent.com/dgsdnr/Babysitters_Around/25db2e9b5a7b2967f42176ec3dba91a2fd6a5388/images/pin-icon.png" style="width:90px; opacity:0.8;">
+      <img id="pin-button" src="https://raw.githubusercontent.com/dgsdnr/Babysitters_Around/25db2e9b5a7b2967f42176ec3dba91a2fd6a5388/images/pin-icon.png" style="width:90px; opacity:0.8; cursor:pointer;" onclick="playPinAnimation(this)">
     </div>
   </div>
 
@@ -1194,6 +1203,12 @@
     }
     function goHome() {
       showHome(currentUser);
+    }
+
+    function playPinAnimation(el) {
+      el.classList.remove('pin-animate');
+      void el.offsetWidth; // перезапуск анимации при повторном клике
+      el.classList.add('pin-animate');
     }
 
     function stub(name) {
