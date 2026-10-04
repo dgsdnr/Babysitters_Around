@@ -1323,6 +1323,10 @@
         }
       }
 
+      if (mrCurrentTab === 'past') {
+        filtered = filtered.slice().sort((a, b) => b.date.localeCompare(a.date));
+      }
+
       mrCurrentList = filtered;
 
       if (filtered.length === 0) {
@@ -2724,6 +2728,7 @@
       if (missing.length > 0) {
         const box = document.getElementById('nf-missing-box');
         box.innerHTML = '<div class="warning">Чтобы опубликовать анкету, заполните:<br>• ' + missing.join('<br>• ') + '</div>';
+        box.scrollIntoView({ behavior: 'smooth', block: 'center' });
         await upsertNannyProfile(fields).then(res => {
           if (!res.error) currentNannyProfile = res.data;
         });
