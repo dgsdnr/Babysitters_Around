@@ -524,9 +524,6 @@
     <input type="text" id="pf-city-other" placeholder="Введите город" style="display:none;margin-top:8px;">
 
     <div id="parent-only-fields" style="display:none;">
-      <div class="field-label">Дети</div>
-      <input type="text" id="f-children" placeholder="Например: Маша, 4 года">
-
       <div class="field-label">О себе</div>
       <textarea id="f-about" placeholder="Расскажите немного о себе"></textarea>
     </div>
@@ -2358,7 +2355,7 @@
       pendingAvatarUrl = null;
       document.getElementById('f-name').value = currentUser.name || '';
       setCityValue('pf', currentUser.city || '');
-      document.getElementById('f-children').value = currentUser.children || '';
+      
       document.getElementById('f-about').value = currentUser.about || '';
       document.getElementById('avatarStatus').textContent = '';
 
@@ -2430,7 +2427,7 @@
       }
 
       if (currentUser.role === 'parent') {
-        updates.children = document.getElementById('f-children').value.trim();
+        
         updates.about = document.getElementById('f-about').value.trim();
       }
 
