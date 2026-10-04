@@ -523,6 +523,7 @@
       <div class="pill" data-value="4–6 лет" onclick="togglePill(this)">4–6 лет</div>
       <div class="pill" data-value="7+ лет" onclick="togglePill(this)">7+ лет</div>
     </div>
+    <p style="font-size:12px;color:#8A7A66;margin-top:4px;">Мы используем только возрастную категорию — без точного возраста или даты рождения. <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">Политика конфиденциальности</a></p>
       <div class="field-label">О себе</div>
       <textarea id="f-about" placeholder="Расскажите немного о себе"></textarea>
     </div>
@@ -837,8 +838,9 @@
     </div>
 
     <div class="field-label">Сообщение няне <span style="font-weight:400;color:#999;">(до 1000 символов)</span></div>
-    <textarea id="cr-message" maxlength="1000"></textarea>
-
+    <textarea id="cr-message" maxlength="1000" placeholder="Не указывайте, пожалуйста, имя ребёнка, точный адрес и сведения о здоровье"></textarea>
+    <p style="font-size:12px;color:#8A7A66;">Отправляя заявку, вы соглашаетесь с <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">политикой конфиденциальности</a> и <a href="https://babysitters-around-1oh3.vercel.app/terms.html" target="_blank" style="color:#2F6FA8;">условиями использования</a>.</p>
+    
     <div class="save-wrap">
       <button class="btn-publish" onclick="submitRequest()">Отправить заявку</button>
     </div>
