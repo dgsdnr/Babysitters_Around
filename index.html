@@ -2395,7 +2395,7 @@
 
       const { error: uploadError } = await sb.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { upsert: true, contentType: file.type || 'image/jpeg' });
 
       if (uploadError) {
         statusEl.textContent = 'Ошибка загрузки: ' + uploadError.message;
@@ -2575,7 +2575,7 @@
 
         const { error: uploadError } = await sb.storage
           .from('avatars')
-          .upload(filePath, file);
+          .upload(filePath, file, { contentType: file.type || 'image/jpeg' });
 
         if (uploadError) {
           statusEl.textContent = 'Ошибка загрузки: ' + uploadError.message;
