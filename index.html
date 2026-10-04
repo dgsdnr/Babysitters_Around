@@ -448,8 +448,16 @@
       <p style="margin-bottom:24px;">Находите нянь рядом с вами или предлагайте свои услуги</p>
       <button class="btn-parent" onclick="selectRole('parent')">Я родитель</button>
       <button class="btn-nanny" onclick="selectRole('babysitter')">Я няня</button>
+
+      <label style="display:flex; align-items:flex-start; gap:8px; margin-top:16px; font-size:13px; color:#8A7A66; text-align:left;">
+        <input type="checkbox" id="welcome-marketing-optin" style="margin-top:3px;">
+        Присылать новости и необязательные уведомления о проекте
+      </label>
+      <p style="font-size:12px;color:#8A7A66;margin-top:10px;">
+        Регистрируясь, вы соглашаетесь с <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">политикой конфиденциальности</a> и <a href="https://babysitters-around-1oh3.vercel.app/terms.html" target="_blank" style="color:#2F6FA8;">условиями использования</a>.
+      </p>
     </div>
-  </div>
+    </div>
 
   <div id="home-parent" class="screen">
     <div class="top-title">Главная</div>
@@ -1156,9 +1164,10 @@
         city: null,
         avatar_url: null,
         about: null,
-        children: null
+        children: null,
+        marketing_opt_in: document.getElementById('welcome-marketing-optin').checked
       };
-
+      
       try {
         const data = deletedRowExists
           ? await secureWrite('users', 'update', fields, 'telegram_id', telegramId)
