@@ -2731,9 +2731,18 @@
       }
     }
 
+    async function syncAvatarFromGallery() {
+      if (!currentUser.avatar_url && nannyPhotos.length > 0) {
+        try {
+          currentUser = await secureWrite('users', 'update', { avatar_url: nannyPhotos[0] }, 'telegram_id', telegramId);
+        } catch (e) { /* не критично */ }
+      }
+    }
+
     async function saveNannyDraft() {
       const cityValue = getCityValue('nfc');
       await syncCityToProfile(cityValue);
+      await syncAvatarFromGallery();
       const fields = collectNannyFormData();
       const { data, error } = await upsertNannyProfile(fields);
       if (error) {
@@ -2749,10 +2758,10 @@
     async function publishNannyProfile() {
       const cityValue = getCityValue('nfc');
       await syncCityToProfile(cityValue);
+      await syncAvatarFromGallery();
       const fields = collectNannyFormData();
 
       const missing = [];
-      if (!currentUser.avatar_url) missing.push('Фотографию (в «Моём профиле»)');
       if (nannyPhotos.length === 0) missing.push('Хотя бы одну фотографию в анкете');
       if (!currentUser.name) missing.push('Имя (в «Моём профиле»)');
       if (!cityValue) missing.push('Город');
