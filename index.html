@@ -446,16 +446,18 @@
         <div style="padding:0 24px; text-align:center; width:100%; box-sizing:border-box; background:#F9F5EC;">
       <div style="font-family:'Baloo 2',sans-serif; font-weight:700; font-size:22px; color:#3A2E22; margin-bottom:4px;">Babysitters Around</div>
       <p style="margin-bottom:24px;">Находите нянь рядом с вами или предлагайте свои услуги</p>
-      <button class="btn-parent" onclick="selectRole('parent')">Я родитель</button>
-      <button class="btn-nanny" onclick="selectRole('babysitter')">Я няня</button>
+      <button class="btn-parent" id="btn-role-parent" onclick="selectRole('parent')" disabled style="opacity:0.4;">Я родитель</button>
+      <button class="btn-nanny" id="btn-role-nanny" onclick="selectRole('babysitter')" disabled style="opacity:0.4;">Я няня</button>
 
-      <label style="display:flex; align-items:flex-start; gap:8px; margin-top:16px; font-size:13px; color:#8A7A66; text-align:left;">
+      <label style="display:flex; align-items:flex-start; gap:8px; margin-top:16px; font-size:13px; color:#3A2E22; text-align:left;">
+        <input type="checkbox" id="welcome-required-consent" style="margin-top:3px;" onchange="toggleRoleButtons()">
+        Я согласен(на) с <a href="https://babysitters-around-1oh3.vercel.app/agreement.html" target="_blank" style="color:#2F6FA8;">Пользовательским соглашением</a>, <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">Политикой обработки персональных данных</a> и <a href="https://babysitters-around-1oh3.vercel.app/terms.html" target="_blank" style="color:#2F6FA8;">Условиями использования</a>
+      </label>
+
+      <label style="display:flex; align-items:flex-start; gap:8px; margin-top:10px; font-size:13px; color:#8A7A66; text-align:left;">
         <input type="checkbox" id="welcome-marketing-optin" style="margin-top:3px;">
         Присылать новости и необязательные уведомления о проекте
       </label>
-      <p style="font-size:12px;color:#8A7A66;margin-top:10px;">
-        Регистрируясь, вы соглашаетесь с <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">политикой конфиденциальности</a> и <a href="https://babysitters-around-1oh3.vercel.app/terms.html" target="_blank" style="color:#2F6FA8;">условиями использования</a>.
-      </p>
     </div>
     </div>
 
@@ -1154,6 +1156,17 @@
         currentNannyProfile = null;
       }
     }
+    
+    function toggleRoleButtons() {
+      const agreed = document.getElementById('welcome-required-consent').checked;
+      const btnParent = document.getElementById('btn-role-parent');
+      const btnNanny = document.getElementById('btn-role-nanny');
+      btnParent.disabled = !agreed;
+      btnNanny.disabled = !agreed;
+      btnParent.style.opacity = agreed ? '1' : '0.4';
+      btnNanny.style.opacity = agreed ? '1' : '0.4';
+    }
+
     async function selectRole(role) {
       const fields = {
         role: role,
@@ -1163,7 +1176,6 @@
         city: null,
         avatar_url: null,
         about: null,
-        children: null,
         marketing_opt_in: document.getElementById('welcome-marketing-optin').checked
       };
       
