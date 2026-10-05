@@ -947,11 +947,27 @@
       <div class="top-title">Настройки</div>
       <button class="close-btn" onclick="goHome()">×</button>
     </div>
-    <div class="menu-item" onclick="stub('Уведомления')"><span class="emoji">🔔</span> Уведомления</div>
+    <div class="menu-item" onclick="openNotificationsScreen()"><span class="emoji">🔔</span> Новости</div>
     <div class="menu-item" onclick="stub('Язык (пока доступен только русский)')"><span class="emoji">🌐</span> Язык</div>
     <div class="menu-item" onclick="showScreen('account-management')"><span class="emoji">👤</span> Управление аккаунтом</div>
     <div class="menu-item" onclick="contactAdmin()"><span class="emoji">💬</span> Поддержка</div>
     <div class="menu-item" onclick="showScreen('about-screen')"><span class="emoji">ℹ️</span> О приложении</div>
+  </div>
+
+  <!-- НОВОСТИ -->
+  <div id="notifications-screen" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Новости</div>
+      <button class="close-btn" onclick="showScreen('settings-screen')">×</button>
+    </div>
+    <div class="toggle-card">
+      <div>
+        <div style="font-weight:600;">Новости и необязательные уведомления о проекте</div>
+        <div style="font-size:13px;color:#888;" id="marketing-toggle-label">Нет</div>
+      </div>
+      <div class="switch" id="marketingSwitch" onclick="toggleMarketingOptIn()"></div>
+    </div>
+    <p style="font-size:13px;color:#8A7A66;margin-top:14px;">Сервисные уведомления (новые заявки, сообщения о заявках) приходят всегда и не отключаются здесь — это нужно для работы сервиса.</p>
   </div>
 
   <!-- О ПРИЛОЖЕНИИ -->
@@ -1267,6 +1283,28 @@
       el.classList.remove('pin-animate');
       void el.offsetWidth; // перезапуск анимации при повторном клике
       el.classList.add('pin-animate');
+    }
+
+    function openNotificationsScreen() {
+      const el = document.getElementById('marketingSwitch');
+      const label = document.getElementById('marketing-toggle-label');
+      const isOn = !!currentUser.marketing_opt_in;
+      el.classList.toggle('on', isOn);
+      label.textContent = isOn ? 'Да' : 'Нет';
+      showScreen('notifications-screen');
+    }
+
+    async function toggleMarketingOptIn() {
+      const newValue = !currentUser.marketing_opt_in;
+      try {
+        currentUser = await secureWrite('users', 'update', { marketing_opt_in: newValue }, 'telegram_id', telegramId);
+        const el = document.getElementById('marketingSwitch');
+        const label = document.getElementById('marketing-toggle-label');
+        el.classList.toggle('on', newValue);
+        label.textContent = newValue ? 'Да' : 'Нет';
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
     }
 
     function contactAdmin() {
