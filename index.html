@@ -1176,8 +1176,13 @@
     }
 
     async function openRequestById(id) {
-      const { data: r } = await sb.from('requests').select('*').eq('id', id).maybeSingle();
-      if (!r || (r.nanny_telegram_id !== telegramId && r.parent_telegram_id !== telegramId)) return;
+      let r;
+      try {
+        r = await secureRead('request-detail', { id });
+      } catch (e) {
+        return;
+      }
+      if (!r) return;
       mrCurrentList = [r];
       await openRequestDetail(id);
     }
