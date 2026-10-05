@@ -950,6 +950,23 @@
     <div class="menu-item" onclick="stub('Уведомления')"><span class="emoji">🔔</span> Уведомления</div>
     <div class="menu-item" onclick="stub('Язык (пока доступен только русский)')"><span class="emoji">🌐</span> Язык</div>
     <div class="menu-item" onclick="showScreen('account-management')"><span class="emoji">👤</span> Управление аккаунтом</div>
+    <div class="menu-item" onclick="contactAdmin()"><span class="emoji">💬</span> Поддержка</div>
+    <div class="menu-item" onclick="showScreen('about-screen')"><span class="emoji">ℹ️</span> О приложении</div>
+  </div>
+
+  <!-- О ПРИЛОЖЕНИИ -->
+  <div id="about-screen" class="screen">
+    <div class="top-bar">
+      <div class="top-title">О приложении</div>
+      <button class="close-btn" onclick="showScreen('settings-screen')">×</button>
+    </div>
+    <p style="text-align:center;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:18px;">Babysitters Around</p>
+    <p style="text-align:center;color:#8A7A66;">Версия MVP 1.0</p>
+    <p style="margin-top:20px;">Платформа для поиска нянь и предложения услуг по присмотру за детьми.</p>
+    <div class="menu-item" onclick="window.open('https://babysitters-around-1oh3.vercel.app/privacy.html','_blank')">📄 Политика конфиденциальности</div>
+    <div class="menu-item" onclick="window.open('https://babysitters-around-1oh3.vercel.app/agreement.html','_blank')">📄 Согласие на обработку данных</div>
+    <div class="menu-item" onclick="window.open('https://babysitters-around-1oh3.vercel.app/terms.html','_blank')">📄 Условия использования</div>
+    <div class="menu-item" onclick="contactAdmin()">💬 Связаться с поддержкой</div>
   </div>
 
   <!-- УПРАВЛЕНИЕ АККАУНТОМ -->
@@ -1250,6 +1267,15 @@
       el.classList.remove('pin-animate');
       void el.offsetWidth; // перезапуск анимации при повторном клике
       el.classList.add('pin-animate');
+    }
+
+    function contactAdmin() {
+      const link = 'https://t.me/ksuuj';
+      if (window.Telegram?.WebApp?.openTelegramLink) {
+        Telegram.WebApp.openTelegramLink(link);
+      } else {
+        window.open(link, '_blank');
+      }
     }
 
     function stub(name) {
