@@ -441,7 +441,7 @@
     <button class="btn-publish" onclick="reloadApp()">Перезагрузить приложение</button>
   </div>
 
-    <div id="welcome" class="screen" style="display:none; flex-direction:column; align-items:center; justify-content:flex-start; padding:0; background:#F9F5EC;">
+    <div id="welcome" class="screen" style="display:none; flex-direction:column; align-items:center; justify-content:flex-start; padding:0; background:#F9F5EC; overflow-x:hidden; max-width:100vw; box-sizing:border-box;">
         <img src="https://raw.githubusercontent.com/dgsdnr/Babysitters_Around/c213e8b2d6f5ba3be2e2d28c0cfd2f3c8ce7db41/images/IMG_6319.jpeg" style="width:100%; max-width:380px; display:block;">
         <div style="padding:0 24px; text-align:center; width:100%; box-sizing:border-box; background:#F9F5EC;">
       <div style="font-family:'Baloo 2',sans-serif; font-weight:700; font-size:22px; color:#3A2E22; margin-bottom:4px;">Babysitters Around</div>
@@ -449,11 +449,13 @@
       <button class="btn-parent" id="btn-role-parent" onclick="selectRole('parent')" disabled style="opacity:0.4;">Я родитель</button>
       <button class="btn-nanny" id="btn-role-nanny" onclick="selectRole('babysitter')" disabled style="opacity:0.4;">Я няня</button>
 
-      <label style="display:flex; align-items:flex-start; gap:8px; margin-top:16px; font-size:13px; color:#3A2E22; text-align:left;">
-        <input type="checkbox" id="welcome-required-consent" style="margin-top:3px;" onchange="toggleRoleButtons()">
-        Я согласен(на) с <a href="https://babysitters-around-1oh3.vercel.app/agreement.html" target="_blank" style="color:#2F6FA8;">Пользовательским соглашением</a>, <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">Политикой обработки персональных данных</a> и <a href="https://babysitters-around-1oh3.vercel.app/terms.html" target="_blank" style="color:#2F6FA8;">Условиями использования</a>
+      <label style="display:flex; align-items:flex-start; gap:8px; margin-top:16px; width:100%; box-sizing:border-box;">
+        <input type="checkbox" id="welcome-required-consent" style="margin-top:3px; flex-shrink:0;" onchange="toggleRoleButtons()">
+        <span style="font-size:13px; color:#3A2E22; text-align:left; word-break:break-word; overflow-wrap:break-word;">
+          Я согласен(на) с <a href="https://babysitters-around-1oh3.vercel.app/agreement.html" target="_blank" style="color:#2F6FA8;">Согласием на обработку данных</a>, <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">Политикой конфиденциальности</a> и <a href="https://babysitters-around-1oh3.vercel.app/terms.html" target="_blank" style="color:#2F6FA8;">Условиями использования</a>
+        </span>
       </label>
-
+          
       <label style="display:flex; align-items:flex-start; gap:8px; margin-top:10px; font-size:13px; color:#8A7A66; text-align:left;">
         <input type="checkbox" id="welcome-marketing-optin" style="margin-top:3px;">
         Присылать новости и необязательные уведомления о проекте
