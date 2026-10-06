@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { type, nannyTelegramId, parentName, childInfo, date, timeInfo, city, workFormat, message, appUrl, reporterName, reporterRole, situationText } = req.body;
+  const { type, nannyTelegramId, parentName, childInfo, date, dates, timeInfo, city, workFormat, message, appUrl, reporterName, reporterRole, situationText } = req.body;
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
@@ -16,6 +16,18 @@ export default async function handler(req, res) {
     chatId = process.env.ADMIN_TELEGRAM_ID;
     text = `⚠️ Отчёт «Другое» по заявке\nОт: ${reporterName || 'пользователь'} (${reporterRole === 'parent' ? 'родитель' : 'няня'})\n\n${situationText || 'без описания'}`;
     replyMarkup = undefined;
+  } else if (type === 'multi_date_request') {
+    chatId = nannyTelegramId;
+    const datesFormatted = (dates || []).map(d =>
+      new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+    ).join(', ');
+    text = `Новая заявка от ${parentName || 'родителя'}\n`;
+    if (childInfo) text += `👧 Возраст: ${childInfo}\n`;
+    text += `📅 Даты: ${datesFormatted}\n`;
+    if (timeInfo) text += `🕐 ${timeInfo}\n`;
+    if (city) text += `📍 ${city}\n`;
+    if (workFormat) text += `🏠 ${workFormat}\n`;
+    replyMarkup = { inline_keyboard: [[{ text: 'Открыть заявку', web_app: { url: appUrl } }]] };
   } else {
     chatId = nannyTelegramId;
     const dateFormatted = new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
