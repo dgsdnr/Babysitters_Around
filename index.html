@@ -1123,6 +1123,8 @@
     const telegramName = tgUser?.first_name || '';
 
     let currentUser = null;
+let currentScreenId = null;
+let restoringState = false;
     let identityVerified = false;
     let telegramInitData = null;
 
@@ -1155,6 +1157,15 @@
     let availabilityMap = {};
     
     async function init() {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const result = await initOnce();
+    if (result !== 'retry') return;
+    await new Promise(r => setTimeout(r, 1500 * attempt));
+  }
+  showFatalError();
+}
+
+async function initOnce() {
       if (!telegramId) {
         document.getElementById('loading').textContent = 'Не удалось получить данные Telegram. Открой приложение через кнопку в боте, а не напрямую в браузере.';
         return;
@@ -1175,15 +1186,13 @@
         identityVerified = true;
         telegramInitData = rawInitData;
       } catch (e) {
-        document.getElementById('loading').textContent = 'Ошибка проверки. Попробуйте ещё раз.';
-        return;
+        return 'retry';
       }
       let data;
       try {
         data = await secureRead('own-user');
       } catch (e) {
-        showFatalError();
-        return;
+  return 'retry';
       }
 
       document.getElementById('loading').style.display = 'none';
@@ -1196,6 +1205,7 @@
         showHome(data);
         const rid = new URLSearchParams(location.search).get('r');
         if (rid) openRequestById(parseInt(rid));
+        else await restoreState();
       } else {
         deletedRowExists = !!data;
         showScreen('welcome');
@@ -1265,6 +1275,8 @@
       document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
       const el = document.getElementById(id);
       el.style.display = (id === 'welcome') ? 'flex' : 'block';
+      currentScreenId = id;
+      saveState();
 
       if (window.Telegram?.WebApp?.BackButton) {
         if (HOME_SCREENS.includes(id)) {
@@ -1918,14 +1930,15 @@
       return '⚪ Доступность не указана';
     }
 
-    async function runSearch() {
+    async function runSearch(silent) {
+  silent = silent === true;
       const city = getCityValue('psc');
       const date = document.getElementById('ps-date').value;
       lastSearchDate = date;
 
       if (!city || !date) {
-        alert('Укажите город и дату — это обязательные поля для поиска.');
-        return;
+      if (!silent) alert('Укажите город и дату — это обязательные поля для поиска.');
+        return false;
       }
 
       const selectedAgeGroups = getSelectedPills('ps-agegroups');
@@ -1941,8 +1954,8 @@
         .eq('is_available', true);
 
       if (error) {
-        alert('Ошибка поиска: ' + error.message);
-        return;
+        if (!silent) alert('Ошибка поиска: ' + error.message);
+        return false;
       }
 
       const ids = profiles.map(p => p.telegram_id);
@@ -2986,6 +2999,94 @@
       alert('Анкета опубликована ❤️\nТеперь родители могут найти вас в поиске.');
       showHome(currentUser);
     }
+
+    // ==== СОХРАНЕНИЕ И ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ====
+const STATE_KEY = 'ba_state_v1';
+const STATE_TTL = 6 * 60 * 60 * 1000;
+
+function collectSearchForm() {
+  return {
+    city: getCityValue('psc'),
+    date: document.getElementById('ps-date').value,
+    ageGroups: getSelectedPills('ps-agegroups').join(','),
+    languages: getSelectedPills('ps-languages').join(','),
+    formats: getSelectedPills('ps-workformat').join(',')
+  };
+}
+
+function applySearchForm(f) {
+  if (!f) return;
+  setCityValue('psc', f.city || '');
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('ps-date').value = (f.date && f.date >= today) ? f.date : '';
+  setSelectedPills('ps-agegroups', f.ageGroups);
+  setSelectedPills('ps-languages', f.languages);
+  setSelectedPills('ps-workformat', f.formats);
+}
+
+function saveState() {
+  if (restoringState || !telegramId || !currentUser) return;
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify({
+      t: Date.now(),
+      tid: telegramId,
+      screen: currentScreenId,
+      nannyId: viewingNannyId,
+      scroll: Math.round(window.scrollY || 0),
+      search: collectSearchForm()
+    }));
+  } catch (e) {}
+}
+
+async function restoreState() {
+  let st;
+  try { st = JSON.parse(localStorage.getItem(STATE_KEY)); } catch (e) { return; }
+  if (!st || st.tid !== telegramId || Date.now() - st.t > STATE_TTL) return;
+  if (!currentUser || currentUser.role !== 'parent') return;
+
+  restoringState = true;
+  try {
+    applySearchForm(st.search);
+    if (st.screen === 'parent-search') {
+      showScreen('parent-search');
+    } else if (st.screen === 'search-results' || st.screen === 'nanny-full-profile') {
+      const ok = await runSearch(true);
+      if (ok && st.screen === 'nanny-full-profile' && st.nannyId) {
+        await openNannyProfile(st.nannyId);
+      } else if (ok && st.scroll) {
+        window.scrollTo(0, st.scroll);
+      }
+    }
+  } catch (e) {
+    showHome(currentUser);
+  } finally {
+    restoringState = false;
+    saveState();
+  }
+}
+
+['click', 'input', 'change'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (currentScreenId === 'parent-search') saveState();
+  });
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    saveState();
+  } else {
+    window.Telegram?.WebApp?.expand();
+    const fatal = document.getElementById('fatal-error');
+    if (fatal && fatal.style.display === 'flex') {
+      fatal.style.display = 'none';
+      const l = document.getElementById('loading');
+      l.style.display = 'flex';
+      l.textContent = 'Загрузка...';
+      init();
+    }
+  }
+});
+window.addEventListener('pagehide', saveState);
+window.Telegram?.WebApp?.onEvent?.('deactivated', saveState);
 
     init();
   </script>
