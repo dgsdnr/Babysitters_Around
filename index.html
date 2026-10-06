@@ -313,7 +313,7 @@
     .cal-green { background: #A5D6A7; }
     .cal-yellow { background: #FFE082; }
     .cal-red { background: #EF9A9A; }
-    .cal-empty { background: white; border: 1px solid #ccc; }
+    .cal-day.date-selected { background: #2F6FA8 !important; color: #FBF1E4; border-color: #2F6FA8; }
 
     .result-group-title {
       font-size: 14px;
@@ -826,8 +826,8 @@
       <div class="pill" data-value="12+" onclick="togglePill(this)">12+ лет</div>
     </div>
     <p style="font-size:12px;color:#8A7A66;margin-top:4px;">Мы используем только возрастную категорию — без точного возраста или даты рождения. <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">Политика конфиденциальности</a></p>
-    <div class="field-label">Дата</div>
-    <input type="date" id="cr-date">
+    <div class="field-label">Даты</div>
+    <div class="menu-item" onclick="openRequestDatePicker()" id="cr-dates-summary">Выбрать даты</div>
 
     <div class="field-label">Время <span style="font-weight:400;color:#999;">(необязательно)</span></div>
     <div style="display:flex; gap:10px;">
@@ -1054,6 +1054,27 @@
 
     <div class="save-wrap">
       <button class="btn-publish" id="support-action-btn" onclick="startSupportPayment()">Поддержать</button>
+    </div>
+  </div>
+
+  <!-- ВЫБОР ДАТ ЗАЯВКИ -->
+  <div id="request-date-picker" class="screen">
+    <div class="top-bar">
+      <div class="top-title">Выберите даты</div>
+      <button class="close-btn" onclick="confirmRequestDates()">×</button>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="changeRdpMonth(-1)">‹</button>
+      <div id="rdp-month-label" style="font-weight:600;font-size:16px;"></div>
+      <button class="cal-nav-btn" onclick="changeRdpMonth(1)">›</button>
+    </div>
+    <div class="cal-weekdays">
+      <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+    </div>
+    <div class="cal-grid" id="rdp-cal-grid"></div>
+    <p style="font-size:13px;color:#8A7A66;margin-top:16px;">Можно выбрать несколько дат — просто нажимайте на нужные дни.</p>
+    <div class="save-wrap">
+      <button class="btn-publish" onclick="confirmRequestDates()">Готово</button>
     </div>
   </div>
 
@@ -1432,7 +1453,7 @@
 
       document.getElementById('mr-list').innerHTML = filtered.map(r => {
         const other = otherMap[isParent ? r.nanny_telegram_id : r.parent_telegram_id];
-        const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+        const dateFormatted = formatRequestDates(r);
         const badge = (!isParent && !r.nanny_seen && r.status === 'upcoming') ? '<span class="new-badge">новая</span>' : '';
         const cancelledBadge = r.status === 'cancelled' ? '<span style="color:#D32F2F;font-size:12px;font-weight:600;">Отменена</span>' : '';
         const displayName = otherDisplayName(other);
@@ -1488,7 +1509,7 @@
       const otherUsers = await secureRead('public-users', { ids: [otherId] });
       const other = otherUsers[0];
 
-      const dateFormatted = new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const dateFormatted = formatRequestDates(r);
 
       let html = `
         <div class="nfp-name-line">${otherDisplayName(other)}</div>
@@ -2188,12 +2209,14 @@
     function openCreateRequest() {
       document.getElementById('cr-city').value = viewingNannyUser?.city || currentUser.city || '';
       setSelectedPills('cr-agecategory', lastSearchAgeGroups);
-      document.getElementById('cr-date').value = lastSearchDate || '';
       document.getElementById('cr-time-start').value = '';
       document.getElementById('cr-time-end').value = '';
-      document.getElementById('cr-message').value = '';
       document.getElementById('cr-recurring').classList.remove('on');
       setSelectedPills('cr-workformat', lastSearchWorkFormat || '');
+
+      selectedRequestDates = new Set(lastSearchDate ? [lastSearchDate] : []);
+      updateDatesSummary();
+
       showScreen('create-request');
     }
 
@@ -2217,12 +2240,149 @@
       }
     }
 
+    let selectedRequestDates = new Set();
+    let rdpYear, rdpMonth;
+
+    function openRequestDatePicker() {
+      const today = new Date();
+      rdpYear = today.getFullYear();
+      rdpMonth = today.getMonth();
+      renderRdpCalendar();
+      showScreen('request-date-picker');
+    }
+
+    function changeRdpMonth(delta) {
+      rdpMonth += delta;
+      if (rdpMonth < 0) { rdpMonth = 11; rdpYear--; }
+      if (rdpMonth > 11) { rdpMonth = 0; rdpYear++; }
+      renderRdpCalendar();
+    }
+
+    function renderRdpCalendar() {
+      const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+      document.getElementById('rdp-month-label').textContent = monthNames[rdpMonth] + ' ' + rdpYear;
+
+      const grid = document.getElementById('rdp-cal-grid');
+      grid.innerHTML = '';
+
+      const firstDay = new Date(rdpYear, rdpMonth, 1);
+      let startOffset = firstDay.getDay() - 1;
+      if (startOffset < 0) startOffset = 6;
+
+      const daysInMonth = new Date(rdpYear, rdpMonth + 1, 0).getDate();
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      for (let i = 0; i < startOffset; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'cal-day empty-cell';
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = rdpYear + '-' + String(rdpMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const cell = document.createElement('div');
+        cell.className = 'cal-day' + (selectedRequestDates.has(dateStr) ? ' date-selected' : '');
+        cell.textContent = d;
+        if (dateStr < todayStr) {
+          cell.style.opacity = '0.3';
+          cell.style.cursor = 'default';
+        } else {
+          cell.onclick = () => toggleRdpDate(dateStr);
+        }
+        grid.appendChild(cell);
+      }
+    }
+
+    function toggleRdpDate(dateStr) {
+      if (selectedRequestDates.has(dateStr)) {
+        selectedRequestDates.delete(dateStr);
+      } else {
+        selectedRequestDates.add(dateStr);
+      }
+      renderRdpCalendar();
+    }
+
+    function updateDatesSummary() {
+      const summary = document.getElementById('cr-dates-summary');
+      const count = selectedRequestDates.size;
+      if (count === 0) {
+        summary.textContent = 'Выбрать даты';
+      } else {
+        const sorted = Array.from(selectedRequestDates).sort();
+        const formatted = sorted.map(d => new Date(d + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }));
+        summary.textContent = count === 1 ? formatted[0] : `${count} дат: ${formatted.join(', ')}`;
+      }
+    }
+
+    function confirmRequestDates() {
+      updateDatesSummary();
+      showScreen('create-request');
+    }
+
+    function formatRequestDates(r) {
+      if (r.dates) {
+        const list = r.dates.split(',').filter(Boolean).sort();
+        return list.map(d => new Date(d + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })).join(', ');
+      }
+      return new Date(r.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    }
+
     async function submitRequest() {
-      const date = document.getElementById('cr-date').value;
-      if (!date) {
-        alert('Укажите дату встречи.');
+      const dates = Array.from(selectedRequestDates).sort();
+      if (dates.length === 0) {
+        alert('Выберите хотя бы одну дату.');
         return;
       }
+
+      const requestData = {
+        parent_telegram_id: telegramId,
+        nanny_telegram_id: viewingNannyId,
+        child_age_category: getSelectedPills('cr-agecategory').join(','),
+        date: dates[dates.length - 1],
+        dates: dates.join(','),
+        time_info: buildTimeRange(),
+        city: document.getElementById('cr-city').value.trim(),
+        work_format: getSelectedPills('cr-workformat').join(','),
+        is_recurring: document.getElementById('cr-recurring').classList.contains('on'),
+        status: 'upcoming'
+      };
+
+      let newRequest;
+      try {
+        newRequest = await secureWrite('requests', 'insert', requestData);
+      } catch (e) {
+        alert('Ошибка отправки заявки: ' + e.message);
+        return;
+      }
+
+      const profileUpdates = {};
+      if (!currentUser.city && requestData.city) profileUpdates.city = requestData.city;
+      if (Object.keys(profileUpdates).length) {
+        try {
+          currentUser = await secureWrite('users', 'update', profileUpdates, 'telegram_id', telegramId);
+        } catch (e) { /* не критично */ }
+      }
+
+      try {
+        await fetch('/api/notify-nanny', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'multi_date_request',
+            nannyTelegramId: viewingNannyId,
+            parentName: currentUser.name,
+            childInfo: requestData.child_age_category,
+            dates: dates,
+            timeInfo: requestData.time_info,
+            city: requestData.city,
+            workFormat: requestData.work_format,
+            appUrl: 'https://babysitters-around-1oh3.vercel.app/?r=' + newRequest.id
+          })
+        });
+      } catch (e) { /* заявка уже сохранена, не блокируем пользователя */ }
+
+      showScreen('request-sent');
+    }
 
       const requestData = {
         parent_telegram_id: telegramId,
