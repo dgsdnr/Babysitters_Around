@@ -830,7 +830,16 @@
     <input type="date" id="cr-date">
 
     <div class="field-label">Время <span style="font-weight:400;color:#999;">(необязательно)</span></div>
-    <input type="time" id="cr-time">
+    <div style="display:flex; gap:10px;">
+      <div style="flex:1;">
+        <div style="font-size:12px;color:#8A7A66;margin-bottom:4px;">С</div>
+        <input type="time" id="cr-time-start">
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:12px;color:#8A7A66;margin-bottom:4px;">До</div>
+        <input type="time" id="cr-time-end">
+      </div>
+    </div>
 
     <div class="field-label">Формат работы</div>
     <div class="pill-group" id="cr-workformat">
@@ -844,8 +853,6 @@
       <div class="switch" id="cr-recurring" onclick="toggleSimpleSwitch('cr-recurring')"></div>
     </div>
 
-    <div class="field-label">Сообщение няне <span style="font-weight:400;color:#999;">(до 1000 символов)</span></div>
-    <textarea id="cr-message" maxlength="1000" placeholder="Не указывайте, пожалуйста, имя ребёнка, точный адрес и сведения о здоровье"></textarea>
     <p style="font-size:12px;color:#8A7A66;">Отправляя заявку, вы соглашаетесь с <a href="https://babysitters-around-1oh3.vercel.app/privacy.html" target="_blank" style="color:#2F6FA8;">политикой конфиденциальности</a> и <a href="https://babysitters-around-1oh3.vercel.app/terms.html" target="_blank" style="color:#2F6FA8;">условиями использования</a>.</p>
     
     <div class="save-wrap">
@@ -2182,7 +2189,8 @@
       document.getElementById('cr-city').value = viewingNannyUser?.city || currentUser.city || '';
       setSelectedPills('cr-agecategory', lastSearchAgeGroups);
       document.getElementById('cr-date').value = lastSearchDate || '';
-      document.getElementById('cr-time').value = '';
+      document.getElementById('cr-time-start').value = '';
+      document.getElementById('cr-time-end').value = '';
       document.getElementById('cr-message').value = '';
       document.getElementById('cr-recurring').classList.remove('on');
       setSelectedPills('cr-workformat', lastSearchWorkFormat || '');
@@ -2222,11 +2230,10 @@
         child_age_category: getSelectedPills('cr-agecategory').join(','),
         child_info: document.getElementById('cr-message-child-note') ? document.getElementById('cr-message-child-note').value.trim() : '',
         date: date,
-        time_info: document.getElementById('cr-time').value.trim(),
+        time_info: buildTimeRange(),
         city: document.getElementById('cr-city').value.trim(),
         work_format: getSelectedPills('cr-workformat').join(','),
         is_recurring: document.getElementById('cr-recurring').classList.contains('on'),
-        message: document.getElementById('cr-message').value.trim(),
         status: 'upcoming'
       };
 
@@ -2754,6 +2761,15 @@
       document.getElementById('nf-missing-box').innerHTML = '';
 
       showScreen('nanny-form');
+    }
+
+    function buildTimeRange() {
+      const start = document.getElementById('cr-time-start').value;
+      const end = document.getElementById('cr-time-end').value;
+      if (start && end) return `${start}–${end}`;
+      if (start) return `с ${start}`;
+      if (end) return `до ${end}`;
+      return '';
     }
 
     function collectNannyFormData() {
