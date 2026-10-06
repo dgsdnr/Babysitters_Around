@@ -2384,60 +2384,6 @@
       showScreen('request-sent');
     }
 
-      const requestData = {
-        parent_telegram_id: telegramId,
-        nanny_telegram_id: viewingNannyId,
-        child_age_category: getSelectedPills('cr-agecategory').join(','),
-        child_info: document.getElementById('cr-message-child-note') ? document.getElementById('cr-message-child-note').value.trim() : '',
-        date: date,
-        time_info: buildTimeRange(),
-        city: document.getElementById('cr-city').value.trim(),
-        work_format: getSelectedPills('cr-workformat').join(','),
-        is_recurring: document.getElementById('cr-recurring').classList.contains('on'),
-        status: 'upcoming'
-      };
-
-      let newRequest;
-      try {
-        newRequest = await secureWrite('requests', 'insert', requestData);
-      } catch (e) {
-        alert('Ошибка отправки заявки: ' + e.message);
-        return;
-      }
-
-      // сохраняем недостающие данные в профиль родителя
-      const profileUpdates = {};
-      if (!currentUser.city && requestData.city) profileUpdates.city = requestData.city;
-      if (Object.keys(profileUpdates).length) {
-        try {
-          currentUser = await secureWrite('users', 'update', profileUpdates, 'telegram_id', telegramId);
-        } catch (e) { /* не критично, если не сохранилось */ }
-      }
-
-      // уведомляем няню через бота
-      try {
-        await fetch('/api/notify-nanny', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            nannyTelegramId: viewingNannyId,
-            parentName: currentUser.name,
-            childInfo: requestData.child_age_category,
-            date: requestData.date,
-            timeInfo: requestData.time_info,
-            city: requestData.city,
-            workFormat: requestData.work_format,
-            message: requestData.message,
-            appUrl: 'https://babysitters-around-1oh3.vercel.app/?r=' + newRequest.id
-          })
-        });
-      } catch (e) {
-        // даже если уведомление не отправилось, заявка уже сохранена — не блокируем пользователя
-      }
-
-      showScreen('request-sent');
-    }
-
     function openSentNannyChat() {
       contactNannyById(viewingNannyId, viewingNannyUser?.username);
       document.getElementById('chat-opened-hint').style.display = 'block';
