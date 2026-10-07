@@ -1364,7 +1364,7 @@ async function initOnce() {
         const hintEl = document.getElementById('nanny-hint');
         const published = currentNannyProfile?.is_published;
         hintEl.innerHTML = !published
-          ? '<div class="hint">Заполните и опубликуйте анкету, чтобы родители могли вас найти 🙂</div>' : '';
+          ? '<div class="hint">Заполните и опубликуйте анкету, чтобы родители могли Вас найти 🙂</div>' : '';
         updateAvailSwitchUI();
       }
     }
@@ -3047,7 +3047,7 @@ async function initOnce() {
       }
 
       currentNannyProfile = data;
-      alert('Анкета опубликована ❤️\nТеперь родители могут найти вас в поиске.');
+      alert('Анкета опубликована ❤️\nТеперь родители могут найти Вас в поиске.');
       showHome(currentUser);
     }
 
