@@ -1096,6 +1096,28 @@
     </div>
   </div>
 
+  <!-- ВЫБОР СТАТУСА ДНЯ -->
+  <div id="day-status-modal" style="display:none; position:fixed; inset:0; background:rgba(58,46,34,0.45); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:#FFFDF9; border-radius:20px; padding:20px; width:260px; max-width:85vw;">
+      <div id="day-modal-date-label" style="font-family:'Baloo 2',sans-serif; font-weight:700; font-size:16px; margin-bottom:14px; text-align:center;"></div>
+
+      <div onclick="applyDayStatus('green')" style="display:flex; align-items:center; gap:10px; padding:12px; border-radius:14px; margin-bottom:8px; cursor:pointer; font-weight:600; background:#F0F8F0;">
+        <span class="cal-dot cal-green"></span> Свободна
+      </div>
+      <div onclick="applyDayStatus('yellow')" style="display:flex; align-items:center; gap:10px; padding:12px; border-radius:14px; margin-bottom:8px; cursor:pointer; font-weight:600; background:#FFFBEE;">
+        <span class="cal-dot cal-yellow"></span> Частично занята
+      </div>
+      <div onclick="applyDayStatus('red')" style="display:flex; align-items:center; gap:10px; padding:12px; border-radius:14px; margin-bottom:8px; cursor:pointer; font-weight:600; background:#FFF0F0;">
+        <span class="cal-dot cal-red"></span> Занята
+      </div>
+      <div onclick="applyDayStatus(null)" style="display:flex; align-items:center; gap:10px; padding:12px; border-radius:14px; margin-bottom:14px; cursor:pointer; font-weight:600; background:#F5F5F5;">
+        <span class="cal-dot cal-empty"></span> Не указано
+      </div>
+
+      <button class="btn-secondary" onclick="closeDayStatusPicker()">Отмена</button>
+    </div>
+  </div>
+
   <script>
     window.onerror = function(msg) {
       showFatalError();
@@ -2535,16 +2557,29 @@ async function initOnce() {
         const cell = document.createElement('div');
         cell.className = 'cal-day' + (status ? ' st-' + status : '');
         cell.textContent = d;
-        cell.onclick = () => cycleDayStatus(dateStr);
+        cell.onclick = () => openDayStatusPicker(dateStr);
         grid.appendChild(cell);
       }
     }
 
-    async function cycleDayStatus(dateStr) {
-      const order = [null, 'green', 'yellow', 'red'];
+    let pendingPickerDate = null;
+
+    function openDayStatusPicker(dateStr) {
+      pendingPickerDate = dateStr;
+      const label = document.getElementById('day-modal-date-label');
+      label.textContent = new Date(dateStr + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+      document.getElementById('day-status-modal').style.display = 'flex';
+    }
+
+    function closeDayStatusPicker() {
+      document.getElementById('day-status-modal').style.display = 'none';
+      pendingPickerDate = null;
+    }
+
+    async function applyDayStatus(next) {
+      const dateStr = pendingPickerDate;
+      if (!dateStr) return;
       const current = availabilityMap[dateStr] || null;
-      const nextIndex = (order.indexOf(current) + 1) % order.length;
-      const next = order[nextIndex];
 
       try {
         if (next === null) {
@@ -2567,12 +2602,14 @@ async function initOnce() {
         }
       } catch (e) {
         alert('Ошибка: ' + e.message);
+        closeDayStatusPicker();
         return;
       }
 
+      closeDayStatusPicker();
       renderCalendar();
     }
-
+    
     // ==== ПРОФИЛЬ ====
 
     function openProfile() {
