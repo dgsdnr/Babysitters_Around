@@ -999,10 +999,19 @@
       <button class="close-btn" onclick="showScreen('settings-screen')">×</button>
     </div>
     <p style="color:#888;font-size:14px;">Здесь вы можете удалить свой аккаунт в Babysitters Around.</p>
+    <button class="btn-secondary" onclick="openSwitchRoleConfirm()">Сменить роль</button>
     <button class="btn-publish" style="background:#D32F2F;margin-top:20px;" onclick="showScreen('delete-confirm-1')">Удалить аккаунт</button>
   </div>
 
   <!-- УДАЛЕНИЕ — ШАГ 1 -->
+  <!-- ПОДТВЕРЖДЕНИЕ СМЕНЫ РОЛИ -->
+  <div id="switch-role-confirm" class="screen center">
+    <h1 id="switch-role-title">Сменить роль?</h1>
+    <p id="switch-role-text">Вы станете отображаться в приложении под другой ролью. История прошлых заявок может отображаться некорректно после смены.</p>
+    <button class="btn-publish" onclick="performRoleSwitch()">Сменить роль</button>
+    <button class="btn-secondary" onclick="showScreen('account-management')">Отмена</button>
+  </div>
+
   <div id="delete-confirm-1" class="screen center">
     <h1>Удалить аккаунт?</h1>
     <p>Это действие нельзя отменить. Ваш профиль будет удалён, активные заявки закрыты. Прошедшие заявки и отзывы сохранятся в истории.</p>
@@ -1248,6 +1257,33 @@ async function initOnce() {
       btnNanny.disabled = !agreed;
       btnParent.style.opacity = agreed ? '1' : '0.4';
       btnNanny.style.opacity = agreed ? '1' : '0.4';
+    }
+
+    function openSwitchRoleConfirm() {
+      const newRole = currentUser.role === 'parent' ? 'babysitter' : 'parent';
+      const newRoleLabel = newRole === 'parent' ? 'родителя' : 'няню';
+      document.getElementById('switch-role-title').textContent = `Стать «${newRole === 'parent' ? 'Родитель' : 'Няня'}»?`;
+      document.getElementById('switch-role-text').textContent =
+        `Вы будете отображаться в приложении как ${newRoleLabel}. История прошлых заявок может отображаться некорректно после смены роли.`;
+      showScreen('switch-role-confirm');
+    }
+
+    async function performRoleSwitch() {
+      const newRole = currentUser.role === 'parent' ? 'babysitter' : 'parent';
+      try {
+        currentUser = await secureWrite('users', 'update', { role: newRole }, 'telegram_id', telegramId);
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+        return;
+      }
+
+      if (newRole === 'babysitter') {
+        await loadNannyProfile();
+      } else {
+        currentNannyProfile = null;
+      }
+
+      showHome(currentUser);
     }
 
     async function selectRole(role) {
