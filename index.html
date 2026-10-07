@@ -1033,18 +1033,25 @@
 
     <div class="field-label">Способ оплаты</div>
     <div class="pill-group" id="support-methods" style="margin-bottom:16px;">
-      <div class="pill selected" data-value="stars" onclick="selectSupportMethod(this)">⭐ Telegram Stars</div>
-      <div class="pill" data-value="crypto" onclick="selectSupportMethod(this)">₿ Крипта</div>
+      <div class="pill selected" data-value="card" onclick="selectSupportMethod(this)">💳 Картой</div>
     </div>
 
-    <div id="support-amounts-stars" class="pill-group">
+    <div id="support-amounts-stars" class="pill-group" style="display:none;">
       <div class="pill" data-value="50" onclick="selectSupportAmount(this)">⭐ 50</div>
       <div class="pill" data-value="150" onclick="selectSupportAmount(this)">⭐ 150</div>
       <div class="pill" data-value="250" onclick="selectSupportAmount(this)">⭐ 250</div>
       <div class="pill" data-value="500" onclick="selectSupportAmount(this)">⭐ 500</div>
       <div class="pill" data-value="custom" onclick="selectSupportAmount(this)">Другая сумма</div>
     </div>
-    <input type="number" id="support-custom" placeholder="Сумма в Stars" style="display:none;margin-top:10px;">
+
+    <div id="support-amounts-card" class="pill-group">
+      <div class="pill" data-value="100" onclick="selectSupportAmount(this)">100 ₽</div>
+      <div class="pill" data-value="300" onclick="selectSupportAmount(this)">300 ₽</div>
+      <div class="pill" data-value="500" onclick="selectSupportAmount(this)">500 ₽</div>
+      <div class="pill" data-value="1000" onclick="selectSupportAmount(this)">1000 ₽</div>
+      <div class="pill" data-value="custom" onclick="selectSupportAmount(this)">Другая сумма</div>
+    </div>
+    <input type="number" id="support-custom" placeholder="Сумма в рублях" style="display:none;margin-top:10px;">
 
     <div id="support-crypto-block" style="display:none;">
       <p style="font-size:14px;color:#666;">Переведите любую сумму в USDT (сеть TRC20) на адрес ниже, затем нажмите «Я отправил(а) перевод» — это поможет нам сказать спасибо лично.</p>
@@ -1663,17 +1670,13 @@ async function initOnce() {
       el.classList.add('selected');
       supportMethod = el.dataset.value;
 
-      const isStars = supportMethod === 'stars';
-      document.getElementById('support-amounts-stars').style.display = isStars ? 'flex' : 'none';
+      document.getElementById('support-amounts-stars').style.display = 'none';
+      document.getElementById('support-amounts-card').style.display = 'flex';
       document.getElementById('support-custom').style.display = 'none';
-      document.getElementById('support-crypto-block').style.display = isStars ? 'none' : 'block';
-      document.getElementById('support-action-btn').textContent = isStars ? 'Поддержать' : 'Я отправил(а) перевод';
-
-      if (!isStars) {
-        document.getElementById('crypto-address-display').textContent = CRYPTO_ADDRESS;
-      }
+      document.getElementById('support-crypto-block').style.display = 'none';
+      document.getElementById('support-action-btn').textContent = 'Поддержать';
     }
-
+    
     function selectSupportAmount(el) {
       document.querySelectorAll('#support-amounts-stars .pill').forEach(p => p.classList.remove('selected'));
       el.classList.add('selected');
@@ -1682,7 +1685,7 @@ async function initOnce() {
     }
 
     function getSupportAmount() {
-      const sel = document.querySelector('#support-amounts-stars .pill.selected');
+      const sel = document.querySelector('#support-amounts-card .pill.selected');
       if (!sel) return null;
       if (sel.dataset.value === 'custom') {
         const v = parseInt(document.getElementById('support-custom').value, 10);
@@ -1700,50 +1703,22 @@ async function initOnce() {
     }
 
     async function startSupportPayment() {
-      if (supportMethod === 'crypto') {
-        try {
-          await fetch('/api/notify-nanny', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'admin_report',
-              reporterName: currentUser.name,
-              reporterRole: currentUser.role,
-              situationText: `[Донат] Пользователь сообщил об отправке крипто-перевода (USDT TRC20). Telegram ID: ${telegramId}`
-            })
-          });
-        } catch (e) { /* не критично */ }
-        alert('Спасибо огромное за поддержку! ❤️');
-        goHome();
-        return;
-      }
-
       const amount = getSupportAmount();
       if (!amount) {
         alert('Выберите сумму поддержки.');
         return;
       }
 
-      try {
-        const res = await fetch('/api/create-invoice', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData: telegramInitData, amount })
-        });
-        const result = await res.json();
-        if (!result.ok) {
-          alert('Ошибка: ' + result.error);
-          return;
-        }
-        Telegram.WebApp.openInvoice(result.link, (status) => {
-          if (status === 'paid') {
-            alert('Спасибо за поддержку! ❤️');
-            goHome();
-          }
-        });
-      } catch (e) {
-        alert('Не удалось создать платёж: ' + e.message);
-      }
+      const btn = document.getElementById('support-action-btn');
+      btn.textContent = 'Обработка платежа...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.textContent = 'Поддержать';
+        btn.disabled = false;
+        alert('Платёж прошёл успешно! Спасибо за поддержку ❤️\n\n(демо-режим: оплата картой пока не подключена по-настоящему)');
+        goHome();
+      }, 1200);
     }
 
     
