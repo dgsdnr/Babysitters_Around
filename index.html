@@ -683,6 +683,10 @@
       <span class="emoji">📅</span> Открыть календарь доступности
     </div>
 
+    <div class="menu-item" onclick="previewMyProfile()">
+      <span class="emoji">👀</span> Посмотреть анкету как родитель
+    </div>
+
     <div class="save-wrap">
       <button class="btn-save" onclick="saveNannyDraft()">Сохранить</button>
       <button class="btn-publish" onclick="publishNannyProfile()">Опубликовать анкету</button>
@@ -775,13 +779,14 @@
   <!-- ПОЛНАЯ АНКЕТА НЯНИ (глазами родителя) -->
   <div id="nanny-full-profile" class="screen">
     <div class="top-bar">
-      <div class="top-title">Анкета няни</div>
+      <div class="top-title" id="nfp-top-title">Анкета няни</div>
       <button class="close-btn" onclick="goHome()">×</button>
     </div>
+    <div id="nfp-preview-banner" style="display:none;" class="hint">Так Вашу анкету видит родитель. Это предпросмотр.</div>
     <div id="nfp-content"></div>
     <div class="save-wrap">
-      <button class="btn-contact" onclick="contactNanny()">Связаться с няней</button>
-      <button class="btn-secondary" onclick="showScreen('search-results')">Назад</button>
+      <button class="btn-contact" id="nfp-contact-btn" onclick="contactNanny()">Связаться с няней</button>
+      <button class="btn-secondary" onclick="nfpGoBack()">Назад</button>
     </div>
   </div>
 
@@ -2129,15 +2134,51 @@ async function initOnce() {
     let lastSearchWorkFormat = null;
     let lastSearchAgeGroups = null;
     let requestOrigin = 'search-results';
-    
+    let nfpBackScreen = 'search-results';
+    let nfpIsPreview = false;
+
     async function openNannyProfile(nId) {
       viewingNannyId = nId;
+      nfpIsPreview = false;
+      nfpBackScreen = 'search-results';
 
       const { data: p } = await sb.from('nanny_profiles').select('*').eq('telegram_id', nId).single();
       const uArr = await secureRead('public-users', { ids: [nId] });
       const u = uArr[0];
       viewingNannyUser = u;
 
+      document.getElementById('nfp-top-title').textContent = 'Анкета няни';
+      document.getElementById('nfp-preview-banner').style.display = 'none';
+      document.getElementById('nfp-contact-btn').style.display = 'block';
+
+      await renderNannyProfileHtml(p, u, nId);
+      showScreen('nanny-full-profile');
+    }
+
+    async function previewMyProfile() {
+      if (!currentNannyProfile) {
+        alert('Сначала заполните хотя бы немного анкеты, чтобы её можно было посмотреть.');
+        return;
+      }
+
+      viewingNannyId = telegramId;
+      viewingNannyUser = currentUser;
+      nfpIsPreview = true;
+      nfpBackScreen = 'nanny-form';
+
+      document.getElementById('nfp-top-title').textContent = 'Ваша анкета глазами родителя';
+      document.getElementById('nfp-preview-banner').style.display = 'block';
+      document.getElementById('nfp-contact-btn').style.display = 'none';
+
+      await renderNannyProfileHtml(currentNannyProfile, currentUser, telegramId);
+      showScreen('nanny-full-profile');
+    }
+
+    function nfpGoBack() {
+      showScreen(nfpBackScreen);
+    }
+
+    async function renderNannyProfileHtml(p, u, nId) {
       const photos = (p.photos || '').split(',').filter(Boolean);
       const langs = (p.languages || '').split(',').filter(Boolean).join(', ') || '—';
       const groups = (p.age_groups || '').split(',').filter(Boolean).join(', ') || '—';
@@ -2215,9 +2256,9 @@ async function initOnce() {
       } else {
         const avg = (nReviews.reduce((s, r) => s + r.rating, 0) / nReviews.length).toFixed(1);
         const authorIds = [...new Set(nReviews.map(r => r.author_telegram_id))];
-      const authors = await secureRead('public-users', { ids: authorIds });
-      const authorMap = {};
-      (authors || []).forEach(u => { authorMap[u.telegram_id] = u; });
+        const authors = await secureRead('public-users', { ids: authorIds });
+        const authorMap = {};
+        (authors || []).forEach(u2 => { authorMap[u2.telegram_id] = u2; });
         html += `<div class="nfp-row"><span style="color:#FFC107;">★</span> <b>${avg}</b> · ${nReviews.length} ${nReviews.length === 1 ? 'отзыв' : 'отзывов'}</div>`;
 
         html += `<div style="max-height:260px; overflow-y:auto; margin-top:10px;">`;
@@ -2239,7 +2280,6 @@ async function initOnce() {
       }
 
       document.getElementById('nfp-content').innerHTML = html;
-      showScreen('nanny-full-profile');
     }
 
     function contactNanny() {
