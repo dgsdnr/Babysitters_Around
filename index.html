@@ -2193,7 +2193,7 @@ async function initOnce() {
       }
 
       if (duties) {
-        html += `<div class="nfp-section-title">Какие дополнительные обязанности Вы готовы взять</div>
+        html += `<div class="nfp-section-title">Какие дополнительные обязанности Вы готовы взять</div><div class="nfp-row">${duties}</div>`;
         if (p.duties_other_note) html += `<div class="nfp-row">${p.duties_other_note}</div>`;
       }
 
