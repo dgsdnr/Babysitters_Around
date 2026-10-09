@@ -480,13 +480,6 @@
   <div id="home-nanny" class="screen">
     <div class="top-title">Главная</div>
     <div id="nanny-hint"></div>
-    <div class="toggle-card">
-      <div>
-        <div style="font-weight:600;">Доступна в поиске</div>
-        <div style="font-size:13px;color:#888;" id="toggle-label">Нет</div>
-      </div>
-      <div class="switch" id="availSwitch" onclick="toggleAvailable()"></div>
-    </div>
     <div id="avail-off-hint"></div>
     <div class="menu-item" onclick="openMyRequests()"><span class="emoji">📋</span> Мои заявки</div>
     <div class="menu-item" onclick="openNannyForm()"><span class="emoji">👩‍🍼</span> Моя анкета</div>
@@ -672,6 +665,14 @@
     <div class="top-bar">
       <div class="top-title">Доступность</div>
       <button class="close-btn" onclick="goHome()">×</button>
+    </div>
+
+    <div class="toggle-card">
+      <div>
+        <div style="font-weight:600;">Доступна в поиске</div>
+        <div style="font-size:13px;color:#888;" id="toggle-label">Нет</div>
+      </div>
+      <div class="switch" id="availSwitch" onclick="toggleAvailable()"></div>
     </div>
 
     <div class="cal-nav">
@@ -1360,7 +1361,7 @@ async function initOnce() {
 
       const hintEl = document.getElementById('avail-off-hint');
       if (!isAvailable && published) {
-        hintEl.innerHTML = '<div class="hint">Вы временно не будете отображаться в результатах поиска. Уже созданные заявки не изменятся. Анкета при этом не удаляется.</div>';
+        hintEl.innerHTML = '<div class="hint">Вы временно не отображаетесь в результатах поиска. Уже созданные заявки не изменятся, анкета не удалена. Чтобы вернуться в поиск, откройте «Доступность» и включите «Доступна в поиске».</div>';
       } else {
         hintEl.innerHTML = '';
       }
@@ -2517,6 +2518,7 @@ async function initOnce() {
       calMonth = today.getMonth();
       await loadAvailability();
       renderCalendar();
+      updateAvailSwitchUI();
       showScreen('nanny-calendar');
     }
 
