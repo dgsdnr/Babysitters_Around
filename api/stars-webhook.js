@@ -16,6 +16,25 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
+  if (update.message?.text === '/start') {
+    const chatId = update.message.chat.id;
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: 'Добро пожаловать в Babysitters Around! 👶❤️\n\nЗдесь родители находят нянь, а няни — семьи. Нажмите кнопку ниже, чтобы начать.',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: 'Открыть приложение', web_app: { url: 'https://babysitters-around-1oh3.vercel.app/' } }
+          ]]
+        }
+      })
+    });
+    return res.status(200).json({ ok: true });
+  }
+
   if (update.message?.successful_payment) {
     const payment = update.message.successful_payment;
     const fromUser = update.message.from;
