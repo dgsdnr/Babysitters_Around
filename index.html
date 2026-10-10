@@ -646,7 +646,7 @@
     <div class="field-label">Дополнительная информация</div>
     <textarea id="nf-additional-info" placeholder="Всё, что ещё хотите рассказать о себе"></textarea>
 
-    <div class="menu-item" onclick="openCalendar()" style="margin-top:20px;">
+    <div class="menu-item" onclick="openCalendar('nanny-form')" style="margin-top:20px;">
       <span class="emoji">📅</span> Открыть календарь доступности
     </div>
 
@@ -664,7 +664,7 @@
   <div id="nanny-calendar" class="screen">
     <div class="top-bar">
       <div class="top-title">Доступность</div>
-      <button class="close-btn" onclick="goHome()">×</button>
+      <button class="close-btn" onclick="closeCalendar()">×</button>
     </div>
 
     <div class="toggle-card">
@@ -1137,7 +1137,8 @@
       Telegram.WebApp.ready();
       Telegram.WebApp.expand();
       Telegram.WebApp.BackButton.onClick(() => {
-        goHome();
+        if (currentScreenId === 'nanny-calendar') closeCalendar();
+        else goHome();
       });
     }
 
@@ -2516,7 +2517,18 @@ async function initOnce() {
 
     // ==== КАЛЕНДАРЬ ДОСТУПНОСТИ ====
 
-    async function openCalendar() {
+    let calendarOrigin = 'home';
+
+    function closeCalendar() {
+      if (calendarOrigin === 'nanny-form') {
+        showScreen('nanny-form');
+      } else {
+        goHome();
+      }
+    }
+
+    async function openCalendar(origin) {
+      calendarOrigin = origin || 'home';
       const today = new Date();
       calYear = today.getFullYear();
       calMonth = today.getMonth();
