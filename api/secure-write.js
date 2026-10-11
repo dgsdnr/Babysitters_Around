@@ -79,6 +79,29 @@ export default async function handler(req, res) {
     Prefer: 'return=representation'
   };
 
+    // requests: нельзя создать вторую активную заявку той же няне
+  if (table === 'requests' && action === 'insert') {
+    if (!values || values.parent_telegram_id !== telegramId || !values.nanny_telegram_id) {
+      return res.status(403).json({ ok: false, error: 'Forbidden' });
+    }
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Belgrade' });
+    const checkUrl = `${supabaseUrl}/rest/v1/requests?select=id`
+      + `&parent_telegram_id=eq.${encodeURIComponent(String(telegramId))}`
+      + `&nanny_telegram_id=eq.${encodeURIComponent(String(values.nanny_telegram_id))}`
+      + `&status=eq.upcoming&date=gte.${today}&limit=1`;
+    const checkRes = await fetch(checkUrl, { headers });
+    const existing = await checkRes.json();
+    if (!checkRes.ok) {
+      return res.status(500).json({ ok: false, error: 'Не удалось проверить заявки. Попробуйте ещё раз.' });
+    }
+    if (Array.isArray(existing) && existing.length > 0) {
+      return res.status(409).json({
+        ok: false,
+        error: 'У вас уже есть активная заявка этой няне. Откройте «Мои заявки» или отмените её, чтобы создать новую.'
+      });
+    }
+  }
+
   let url = `${supabaseUrl}/rest/v1/${table}`;
   let method, body;
 
