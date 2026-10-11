@@ -2345,7 +2345,19 @@ async function initOnce() {
       openCreateRequest();
     }
 
-    function openCreateRequest() {
+        async function openCreateRequest() {
+      // быстрая проверка: нет ли уже активной заявки этой няне (сервер проверяет в любом случае)
+      try {
+        const mine = await secureRead('my-requests');
+        const hasActive = (mine || []).some(r =>
+          String(r.nanny_telegram_id) === String(viewingNannyId) &&
+          r.status === 'upcoming' && !isPast(r.date));
+        if (hasActive) {
+          alert('У вас уже есть активная заявка этой няне. Откройте «Мои заявки» или отмените её, чтобы создать новую.');
+          return;
+        }
+      } catch (e) { /* не блокируем, сервер проверит сам */ }
+
       document.getElementById('cr-city').value = viewingNannyUser?.city || currentUser.city || '';
       setSelectedPills('cr-agecategory', lastSearchAgeGroups);
       document.getElementById('cr-time-start').value = '';
@@ -2490,7 +2502,7 @@ async function initOnce() {
       try {
         newRequest = await secureWrite('requests', 'insert', requestData);
       } catch (e) {
-        alert('Ошибка отправки заявки: ' + e.message);
+         alert(e.message.includes('активная заявка') ? e.message : 'Ошибка отправки заявки: ' + e.message);
         return;
       }
 
