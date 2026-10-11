@@ -1227,8 +1227,15 @@ async function initOnce() {
 
       document.getElementById('loading').style.display = 'none';
 
-      if (data && !data.is_deleted) {
+            if (data && !data.is_deleted) {
         currentUser = data;
+        // подтягиваем актуальный Telegram username, если он появился или изменился
+        if ((data.username || null) !== (telegramUsername || null)) {
+          try {
+            const updated = await secureWrite('users', 'update', { username: telegramUsername }, 'telegram_id', telegramId);
+            if (updated) currentUser = updated;
+          } catch (e) { /* не критично */ }
+        }
         if (data.role === 'babysitter') {
           await loadNannyProfile();
         }
@@ -2753,7 +2760,7 @@ async function initOnce() {
         usernameWarning.innerHTML = '';
       } else {
         usernameDisplay.textContent = 'Не указан';
-        usernameWarning.innerHTML = '<div class="warning">У вас не указан Telegram username. Без него другим пользователям может быть сложнее связаться с вами.</div>';
+        usernameWarning.innerHTML = '<div class="warning">У вас не указан Telegram username. Без него другим пользователям может быть сложнее связаться с вами. Добавьте его в настройках Telegram и откройте приложение заново — он подтянется сам.</div>';
       }
 
       showScreen('profile');
