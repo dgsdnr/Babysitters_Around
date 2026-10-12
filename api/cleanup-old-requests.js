@@ -10,10 +10,9 @@ export default async function handler(req, res) {
   const RETENTION_DAYS = 180;
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  const closedStatuses = ['cancelled', 'completed', 'not_happened', 'reported_other'];
-  const statusFilter = closedStatuses.map(s => `status.eq.${s}`).join(',');
-
-  const url = `${supabaseUrl}/rest/v1/requests?date=lt.${cutoff}&or=(${statusFilter})`;
+    // удаляем все заявки старше срока хранения, независимо от статуса
+  // (если вторая сторона так и не ответила на «Встреча состоялась?», заявка тоже не должна храниться вечно)
+  const url = `${supabaseUrl}/rest/v1/requests?date=lt.${cutoff}`;
 
   const delRes = await fetch(url, {
     method: 'DELETE',
