@@ -1030,7 +1030,8 @@
     <div class="pill-group" id="support-methods" style="margin-bottom:16px;">
       <div class="pill selected" data-value="card" onclick="selectSupportMethod(this)">💳 Картой</div>
       <div class="pill" data-value="stars" onclick="selectSupportMethod(this)">⭐ Telegram Stars</div>
-      <div class="pill" data-value="crypto" onclick="selectSupportMethod(this)">₿ Криптовалюта</div>
+       <div class="pill" data-value="crypto" onclick="selectSupportMethod(this)">₿ Криптовалюта</div>
+      <div class="pill" data-value="qr" onclick="selectSupportMethod(this)">🏦 QR из банка</div>
     </div>
     
     <div id="support-amounts-stars" class="pill-group" style="display:none;">
@@ -1054,6 +1055,11 @@
       <p style="font-size:14px;color:#666;">Переведите любую сумму в USDT (сеть TRC20) на адрес ниже, затем нажмите «Я отправил(а) перевод» — это поможет нам сказать спасибо лично.</p>
       <div class="readonly-field" id="crypto-address-display" style="word-break:break-all;"></div>
       <button class="btn-secondary" onclick="copyCryptoAddress()">Скопировать адрес</button>
+    </div>
+
+        <div id="support-qr-block" style="display:none;text-align:center;">
+      <p style="font-size:14px;color:#666;text-align:left;">Откройте приложение своего банка, отсканируйте QR-код и введите любую сумму. Затем нажмите «Я отправил(а) перевод» — это поможет нам сказать спасибо лично.</p>
+      <img src="images/donate-qr.png" alt="QR-код для перевода" style="width:100%;max-width:280px;border-radius:12px;margin:8px auto;display:block;">
     </div>
 
     <div class="save-wrap">
@@ -1742,10 +1748,12 @@ async function initOnce() {
       const isCard = supportMethod === 'card';
       const isStars = supportMethod === 'stars';
       const isCrypto = supportMethod === 'crypto';
+      const isQr = supportMethod === 'qr';
 
       document.getElementById('support-amounts-card').style.display = isCard ? 'flex' : 'none';
       document.getElementById('support-amounts-stars').style.display = isStars ? 'flex' : 'none';
       document.getElementById('support-crypto-block').style.display = isCrypto ? 'block' : 'none';
+      document.getElementById('support-qr-block').style.display = isQr ? 'block' : 'none';
 
       // сбрасываем выбор суммы и поле «Другая сумма»
       document.querySelectorAll('#support-amounts-card .pill, #support-amounts-stars .pill')
@@ -1755,7 +1763,7 @@ async function initOnce() {
       customEl.value = '';
       customEl.placeholder = isStars ? 'Сумма в Stars' : 'Сумма в рублях';
 
-      document.getElementById('support-action-btn').textContent = isCrypto ? 'Я отправил(а) перевод' : 'Поддержать';
+     document.getElementById('support-action-btn').textContent = (isCrypto || isQr) ? 'Я отправил(а) перевод' : 'Поддержать';
 
       if (isCrypto) {
         document.getElementById('crypto-address-display').textContent = CRYPTO_ADDRESS;
@@ -1790,8 +1798,9 @@ async function initOnce() {
     }
 
     async function startSupportPayment() {
-      // --- Криптовалюта: просто сообщаем администратору ---
-      if (supportMethod === 'crypto') {
+     // --- Криптовалюта или QR из банка: просто сообщаем администратору ---
+      if (supportMethod === 'crypto' || supportMethod === 'qr') {
+        const methodName = supportMethod === 'qr' ? 'перевода по QR-коду из банка' : 'крипто-перевода (USDT TRC20)';
         try {
           await fetch('/api/notify-nanny', {
             method: 'POST',
@@ -1800,7 +1809,7 @@ async function initOnce() {
               type: 'admin_report',
               reporterName: currentUser.name,
               reporterRole: currentUser.role,
-              situationText: `[Донат] Пользователь сообщил об отправке крипто-перевода (USDT TRC20). Telegram ID: ${telegramId}`
+              situationText: `[Донат] Пользователь сообщил об отправке ${methodName}. Telegram ID: ${telegramId}`
             })
           });
         } catch (e) { /* не критично */ }
