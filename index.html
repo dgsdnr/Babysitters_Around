@@ -1481,6 +1481,17 @@ async function initOnce() {
     }
 
     async function loadAndRenderRequests() {
+        // Мой ответ на вопрос «Встреча состоялась?» (у родителя и у няни он свой)
+    function myMeetingAnswer(r) {
+      return String(r.parent_telegram_id) === String(telegramId) ? r.parent_answer : r.nanny_answer;
+    }
+
+    // Заявка для меня «закрыта»: отменена, или я уже ответил, или она закрыта по-старому (до этого обновления)
+    function isRequestDoneForMe(r) {
+      return r.status !== 'upcoming' || !!myMeetingAnswer(r);
+    }
+
+    async function loadAndRenderRequests() {
       const isParent = currentUser.role === 'parent';
 
       let data;
@@ -1494,17 +1505,17 @@ async function initOnce() {
       let filtered = [];
       if (isParent) {
         if (mrCurrentTab === 'upcoming') {
-          filtered = data.filter(r => r.status === 'upcoming');
+          filtered = data.filter(r => !isRequestDoneForMe(r));
         } else {
-          filtered = data.filter(r => r.status !== 'upcoming');
+          filtered = data.filter(r => isRequestDoneForMe(r));
         }
       } else {
         if (mrCurrentTab === 'new') {
-          filtered = data.filter(r => r.status === 'upcoming' && !r.nanny_seen);
+          filtered = data.filter(r => !isRequestDoneForMe(r) && !r.nanny_seen);
         } else if (mrCurrentTab === 'upcoming') {
-          filtered = data.filter(r => r.status === 'upcoming' && r.nanny_seen);
+          filtered = data.filter(r => !isRequestDoneForMe(r) && r.nanny_seen);
         } else {
-          filtered = data.filter(r => r.status !== 'upcoming');
+          filtered = data.filter(r => isRequestDoneForMe(r));
         }
       }
 
@@ -1533,9 +1544,10 @@ async function initOnce() {
         const badge = (!isParent && !r.nanny_seen && r.status === 'upcoming') ? '<span class="new-badge">новая</span>' : '';
         const cancelledBadge = r.status === 'cancelled' ? '<span style="color:#D32F2F;font-size:12px;font-weight:600;">Отменена</span>' : '';
         const displayName = otherDisplayName(other);
-        const needsAnswer = r.status === 'upcoming' && isPast(r.date) && !r.meeting_happened;
+        const myAnswer = myMeetingAnswer(r);
+        const needsAnswer = r.status === 'upcoming' && isPast(r.date) && !myAnswer;
 
-        const canReview = r.status === 'completed' && !reviewedTargetIds.has(other?.telegram_id);
+        const canReview = (myAnswer === 'yes' || (!myAnswer && r.status === 'completed')) && !reviewedTargetIds.has(other?.telegram_id);
 
         let actionHtml;
         if (needsAnswer) {
@@ -1626,8 +1638,12 @@ async function initOnce() {
       showScreen('request-detail');
     }
 
-    function requestStatusLabel(r) {
+        function requestStatusLabel(r) {
       if (r.status === 'cancelled') return 'Отменена';
+      const mine = myMeetingAnswer(r);
+      if (mine === 'yes') return 'Состоялась';
+      if (mine === 'no') return 'Не состоялась';
+      if (mine === 'other') return 'Другое (на рассмотрении)';
       if (r.status === 'completed') return 'Состоялась';
       if (r.status === 'not_happened') return 'Не состоялась';
       if (r.status === 'reported_other') return 'Другое (на рассмотрении)';
@@ -1646,15 +1662,11 @@ async function initOnce() {
       }
     }
 
-    async function finalizeMeetingAnswer(type) {
-      const updates = { meeting_happened: type };
+        async function finalizeMeetingAnswer(type) {
+      // сервер сам определяет, чей это ответ (родителя или няни), и собирает общий итог заявки
+      const updates = { meeting_answer: type };
 
-      if (type === 'yes') {
-        updates.status = 'completed';
-      } else if (type === 'no') {
-        updates.status = 'not_happened';
-      } else if (type === 'other') {
-        updates.status = 'reported_other';
+      if (type === 'other') {
         updates.message = (document.getElementById('meeting-other-text').value.trim() || '') + '\n\n[Ответ «Другое» на вопрос о встрече]';
       }
 
