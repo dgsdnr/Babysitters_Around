@@ -515,6 +515,7 @@
     <div class="field-label">Город</div>
     <div class="pill-group" id="pf-country-pills">
       <div class="pill" data-value="Сербия" onclick="citySelectCountry('pf', this, 'Сербия')">Сербия</div>
+      <div class="pill" data-value="Грузия" onclick="citySelectCountry('pf', this, 'Грузия')">Грузия</div>
       <div class="pill" data-value="__other__" onclick="citySelectCountry('pf', this, '__other__')">Другая страна</div>
     </div>
     <div class="pill-group" id="pf-city-pills" style="margin-top:8px;"></div>
@@ -555,6 +556,7 @@
     <div class="field-label">Город *</div>
     <div class="pill-group" id="nfc-country-pills">
       <div class="pill" data-value="Сербия" onclick="citySelectCountry('nfc', this, 'Сербия')">Сербия</div>
+      <div class="pill" data-value="Грузия" onclick="citySelectCountry('nfc', this, 'Грузия')">Грузия</div>
       <div class="pill" data-value="__other__" onclick="citySelectCountry('nfc', this, '__other__')">Другая страна</div>
     </div>
     <div class="pill-group" id="nfc-city-pills" style="margin-top:8px;"></div>
@@ -706,6 +708,7 @@
     <div class="field-label">Город *</div>
     <div class="pill-group" id="psc-country-pills">
       <div class="pill" data-value="Сербия" onclick="citySelectCountry('psc', this, 'Сербия')">Сербия</div>
+      <div class="pill" data-value="Грузия" onclick="citySelectCountry('psc', this, 'Грузия')">Грузия</div>
       <div class="pill" data-value="__other__" onclick="citySelectCountry('psc', this, '__other__')">Другая страна</div>
     </div>
     <div class="pill-group" id="psc-city-pills" style="margin-top:8px;"></div>
@@ -2870,7 +2873,8 @@ async function initOnce() {
     }
 
     const CITY_DATA = {
-      'Сербия': ['Белград', 'Нови-Сад']
+       'Сербия': ['Белград', 'Нови-Сад'],
+      'Грузия': ['Тбилиси', 'Батуми']
     };
 
     function citySelectCountry(prefix, el, country) {
