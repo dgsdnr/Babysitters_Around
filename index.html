@@ -1479,8 +1479,8 @@ async function initOnce() {
       event.target.classList.add('active');
       await loadAndRenderRequests();
     }
+    
 
-    async function loadAndRenderRequests() {
         // Мой ответ на вопрос «Встреча состоялась?» (у родителя и у няни он свой)
     function myMeetingAnswer(r) {
       return String(r.parent_telegram_id) === String(telegramId) ? r.parent_answer : r.nanny_answer;
