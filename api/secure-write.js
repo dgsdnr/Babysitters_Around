@@ -79,6 +79,71 @@ export default async function handler(req, res) {
     Prefer: 'return=representation'
   };
 
+    // requests: обновлять может только участник заявки, и только разрешённые поля
+  if (table === 'requests' && action === 'update') {
+    if (matchField !== 'id' || matchValue === undefined || !values) {
+      return res.status(400).json({ ok: false, error: 'Bad request' });
+    }
+    const rowRes = await fetch(
+      `${supabaseUrl}/rest/v1/requests?select=*&id=eq.${encodeURIComponent(String(matchValue))}&limit=1`,
+      { headers }
+    );
+    const rows = await rowRes.json();
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) {
+      return res.status(404).json({ ok: false, error: 'Заявка не найдена' });
+    }
+    const isParentSide = String(row.parent_telegram_id) === String(telegramId);
+    const isNannySide = String(row.nanny_telegram_id) === String(telegramId);
+    if (!isParentSide && !isNannySide) {
+      return res.status(403).json({ ok: false, error: 'Forbidden' });
+    }
+
+    const clean = {};
+
+    if ('nanny_seen' in values) {
+      if (!isNannySide) return res.status(403).json({ ok: false, error: 'Forbidden' });
+      clean.nanny_seen = !!values.nanny_seen;
+    }
+
+    if (values.status === 'cancelled') {
+      if (!isParentSide) return res.status(403).json({ ok: false, error: 'Forbidden' });
+      if (row.status !== 'upcoming') {
+        return res.status(409).json({ ok: false, error: 'Эту заявку уже нельзя отменить' });
+      }
+      clean.status = 'cancelled';
+    }
+
+    // ответ на вопрос «Встреча состоялась?» — у каждой стороны свой
+    if (values.meeting_answer) {
+      if (!['yes', 'no', 'other'].includes(values.meeting_answer)) {
+        return res.status(400).json({ ok: false, error: 'Bad answer' });
+      }
+      const col = isParentSide ? 'parent_answer' : 'nanny_answer';
+      if (row[col]) {
+        return res.status(409).json({ ok: false, error: 'Вы уже ответили на этот вопрос' });
+      }
+      clean[col] = values.meeting_answer;
+      clean.meeting_happened = values.meeting_answer;
+      if (typeof values.message === 'string') clean.message = values.message.slice(0, 2000);
+
+      const p = isParentSide ? values.meeting_answer : row.parent_answer;
+      const n = isNannySide ? values.meeting_answer : row.nanny_answer;
+      if (p && n) {
+        if (p === 'yes' && n === 'yes') clean.status = 'completed';
+        else if (p === 'no' && n === 'no') clean.status = 'not_happened';
+        else clean.status = 'reported_other';
+      }
+    }
+
+    // клиент не может подсунуть никаких других полей
+    Object.keys(values).forEach(k => delete values[k]);
+    Object.assign(values, clean);
+    if (Object.keys(values).length === 0) {
+      return res.status(400).json({ ok: false, error: 'Nothing to update' });
+    }
+  }
+
     // requests: нельзя создать вторую активную заявку той же няне
   if (table === 'requests' && action === 'insert') {
     if (!values || values.parent_telegram_id !== telegramId || !values.nanny_telegram_id) {
