@@ -157,6 +157,15 @@
       font-family: inherit;
       background: white;
     }
+        select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      background: white;
+    }
     textarea { resize: vertical; min-height: 80px; }
     .readonly-field {
       background: #eee;
@@ -513,12 +522,8 @@
     <input type="text" id="f-name" placeholder="Ваше имя">
 
     <div class="field-label">Город</div>
-    <div class="pill-group" id="pf-country-pills">
-      <div class="pill" data-value="Сербия" onclick="citySelectCountry('pf', this, 'Сербия')">Сербия</div>
-      <div class="pill" data-value="Грузия" onclick="citySelectCountry('pf', this, 'Грузия')">Грузия</div>
-      <div class="pill" data-value="__other__" onclick="citySelectCountry('pf', this, '__other__')">Другая страна</div>
-    </div>
-    <div class="pill-group" id="pf-city-pills" style="margin-top:8px;"></div>
+        <select id="pf-country" onchange="cityOnCountryChange('pf')"></select>
+    <select id="pf-city" onchange="cityOnCityChange('pf')" style="display:none;margin-top:8px;"></select>
     <input type="text" id="pf-city-other" placeholder="Введите город" style="display:none;margin-top:8px;">
 
     <div id="parent-only-fields" style="display:none;">
@@ -554,12 +559,8 @@
     <div class="readonly-field" id="nf-name-display">—</div>
     <div style="font-size:12px; color:#8A7A66; margin:-4px 0 14px;">Чтобы изменить имя, откройте «Мой профиль» в меню. Оно автоматически обновится и в анкете.</div>
     <div class="field-label">Город *</div>
-    <div class="pill-group" id="nfc-country-pills">
-      <div class="pill" data-value="Сербия" onclick="citySelectCountry('nfc', this, 'Сербия')">Сербия</div>
-      <div class="pill" data-value="Грузия" onclick="citySelectCountry('nfc', this, 'Грузия')">Грузия</div>
-      <div class="pill" data-value="__other__" onclick="citySelectCountry('nfc', this, '__other__')">Другая страна</div>
-    </div>
-    <div class="pill-group" id="nfc-city-pills" style="margin-top:8px;"></div>
+        <select id="nfc-country" onchange="cityOnCountryChange('nfc')"></select>
+    <select id="nfc-city" onchange="cityOnCityChange('nfc')" style="display:none;margin-top:8px;"></select>
     <input type="text" id="nfc-city-other" placeholder="Введите город" style="display:none;margin-top:8px;">
 
     <div class="field-label">Возраст *</div>
@@ -571,6 +572,7 @@
       <div class="pill" data-value="Английский" onclick="togglePill(this)">Английский</div>
       <div class="pill" data-value="Сербский" onclick="togglePill(this)">Сербский</div>
       <div class="pill" data-value="Немецкий" onclick="togglePill(this)">Немецкий</div>
+      <div class="pill" data-value="Грузинский" onclick="togglePill(this)">Грузинский</div>
     </div>
 
     <div class="field-label">Возрастные группы детей *</div>
@@ -706,12 +708,8 @@
     </div>
 
     <div class="field-label">Город *</div>
-    <div class="pill-group" id="psc-country-pills">
-      <div class="pill" data-value="Сербия" onclick="citySelectCountry('psc', this, 'Сербия')">Сербия</div>
-      <div class="pill" data-value="Грузия" onclick="citySelectCountry('psc', this, 'Грузия')">Грузия</div>
-      <div class="pill" data-value="__other__" onclick="citySelectCountry('psc', this, '__other__')">Другая страна</div>
-    </div>
-    <div class="pill-group" id="psc-city-pills" style="margin-top:8px;"></div>
+        <select id="psc-country" onchange="cityOnCountryChange('psc')"></select>
+    <select id="psc-city" onchange="cityOnCityChange('psc')" style="display:none;margin-top:8px;"></select>
     <input type="text" id="psc-city-other" placeholder="Введите город" style="display:none;margin-top:8px;">
 
     <div class="field-label">Дата *</div>
@@ -2872,48 +2870,61 @@ async function initOnce() {
       document.getElementById(id).classList.toggle('on');
     }
 
+    // Список стран и городов. Чтобы добавить страну или город — просто допишите сюда.
     const CITY_DATA = {
-       'Сербия': ['Белград', 'Нови-Сад'],
+      'Сербия': ['Белград', 'Нови-Сад'],
       'Грузия': ['Тбилиси', 'Батуми']
     };
+    const CITY_PREFIXES = ['pf', 'nfc', 'psc'];
 
-    function citySelectCountry(prefix, el, country) {
-      document.querySelectorAll('#' + prefix + '-country-pills .pill').forEach(p => p.classList.remove('selected'));
-      el.classList.add('selected');
-      renderCityPillsForCountry(prefix, country);
+    function initCitySelects() {
+      CITY_PREFIXES.forEach(prefix => {
+        const countrySel = document.getElementById(prefix + '-country');
+        if (!countrySel) return;
+        countrySel.innerHTML = '<option value="">Выберите страну</option>'
+          + Object.keys(CITY_DATA).map(c => `<option value="${c}">${c}</option>`).join('')
+          + '<option value="__other__">Другая страна</option>';
+      });
     }
 
-    function renderCityPillsForCountry(prefix, country) {
-      const cityPillsEl = document.getElementById(prefix + '-city-pills');
+    function cityRender(prefix, country) {
+      const citySel = document.getElementById(prefix + '-city');
       const otherInput = document.getElementById(prefix + '-city-other');
       otherInput.style.display = 'none';
       otherInput.value = '';
 
+      if (!country) {
+        citySel.style.display = 'none';
+        citySel.innerHTML = '';
+        citySel.value = '';
+        return;
+      }
       if (country === '__other__') {
-        cityPillsEl.innerHTML = '';
+        citySel.style.display = 'none';
+        citySel.innerHTML = '';
+        citySel.value = '';
         otherInput.placeholder = 'Введите страну и город';
         otherInput.style.display = 'block';
         return;
       }
 
       const cities = CITY_DATA[country] || [];
-      cityPillsEl.innerHTML = cities.map(c =>
-        `<div class="pill" data-value="${c}" onclick="citySelectCity('${prefix}', this, '${c}')">${c}</div>`
-      ).join('') + `<div class="pill" data-value="__other__" onclick="citySelectCity('${prefix}', this, '__other__')">Другой город</div>`;
+      citySel.innerHTML = '<option value="">Выберите город</option>'
+        + cities.map(c => `<option value="${c}">${c}</option>`).join('')
+        + '<option value="__other__">Другой город</option>';
+      citySel.style.display = 'block';
     }
 
-    function citySelectCity(prefix, el, city) {
-      document.querySelectorAll('#' + prefix + '-city-pills .pill').forEach(p => p.classList.remove('selected'));
-      el.classList.add('selected');
+    function cityOnCountryChange(prefix) {
+      cityRender(prefix, document.getElementById(prefix + '-country').value);
+    }
+
+    function cityOnCityChange(prefix) {
+      const isOther = document.getElementById(prefix + '-city').value === '__other__';
       const otherInput = document.getElementById(prefix + '-city-other');
-      if (city === '__other__') {
-        otherInput.placeholder = 'Введите город';
-        otherInput.style.display = 'block';
-        otherInput.value = '';
-      } else {
-        otherInput.style.display = 'none';
-        otherInput.value = '';
-      }
+      otherInput.value = '';
+      otherInput.placeholder = 'Введите город';
+      otherInput.style.display = isOther ? 'block' : 'none';
     }
 
     function getCityValue(prefix) {
@@ -2921,38 +2932,35 @@ async function initOnce() {
       if (otherInput.style.display === 'block' && otherInput.value.trim()) {
         return otherInput.value.trim();
       }
-      const selectedCity = document.querySelector('#' + prefix + '-city-pills .pill.selected');
-      if (selectedCity && selectedCity.dataset.value !== '__other__') {
-        return selectedCity.dataset.value;
+      const citySel = document.getElementById(prefix + '-city');
+      if (citySel.value && citySel.value !== '__other__') {
+        return citySel.value;
       }
       return '';
     }
 
     function setCityValue(prefix, cityStr) {
-      document.querySelectorAll('#' + prefix + '-country-pills .pill').forEach(p => p.classList.remove('selected'));
-      document.getElementById(prefix + '-city-pills').innerHTML = '';
-      const otherInput = document.getElementById(prefix + '-city-other');
-      otherInput.style.display = 'none';
-      otherInput.value = '';
+      const countrySel = document.getElementById(prefix + '-country');
+      countrySel.value = '';
+      cityRender(prefix, '');
 
       if (!cityStr) return;
 
       for (const country in CITY_DATA) {
         if (CITY_DATA[country].includes(cityStr)) {
-          const countryPill = document.querySelector(`#${prefix}-country-pills .pill[data-value="${country}"]`);
-          if (countryPill) countryPill.classList.add('selected');
-          renderCityPillsForCountry(prefix, country);
-          const cityPill = document.querySelector(`#${prefix}-city-pills .pill[data-value="${cityStr}"]`);
-          if (cityPill) cityPill.classList.add('selected');
+          countrySel.value = country;
+          cityRender(prefix, country);
+          document.getElementById(prefix + '-city').value = cityStr;
           return;
         }
       }
 
-      const otherCountryPill = document.querySelector(`#${prefix}-country-pills .pill[data-value="__other__"]`);
-      if (otherCountryPill) otherCountryPill.classList.add('selected');
-      otherInput.style.display = 'block';
-      otherInput.value = cityStr;
+      countrySel.value = '__other__';
+      cityRender(prefix, '__other__');
+      document.getElementById(prefix + '-city-other').value = cityStr;
     }
+
+    initCitySelects();
 
     function togglePill(el) {
       el.classList.toggle('selected');
